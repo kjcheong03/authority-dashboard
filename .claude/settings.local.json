@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -N -X POST http://localhost:3002/api/research -H \"Content-Type: application/json\" -d '{\"mode\":\"replay\"}' --max-time 40)",
+      "Bash(curl -s -o /dev/null -w \"GET / -> %{http_code}\\\\n\" http://localhost:3002/ --max-time 30)",
+      "Bash(curl -s http://localhost:3002/ --max-time 30)",
+      "Bash(curl -s \"https://factchecktools.googleapis.com/v1alpha1/claims:search?query=papaya%20leaf%20dengue&languageCode=en&pageSize=3&key=AIzaSyD7qLBGTZPzHHrUYY_zkdLMGbHiXoH85h0\" --max-time 20)",
+      "Bash(python -c ' *)",
+      "Bash(node -e \"const {BigQuery}=require\\('@google-cloud/bigquery'\\); const bq=new BigQuery\\({projectId:'project-a27c9cde-2ce6-4d40-9b9'}\\); bq.query\\({query:'SELECT 1 AS ok', maximumBytesBilled:'10000000'}\\).then\\(\\([r]\\)=>console.log\\('AUTH OK ->', JSON.stringify\\(r\\)\\)\\).catch\\(e=>console.log\\('ERR ->', e.message.split\\('\\\\n'\\)[0]\\)\\)\")",
+      "Bash(winget install *)",
+      "Bash(node -e ' *)",
+      "Bash(node bqtest.cjs)",
+      "Bash(curl -s \"https://factchecktools.googleapis.com/v1alpha1/claims:search?query=dengue%20papaya%20leaf&languageCode=en&pageSize=3&key=AIzaSyD7qLBGTZPzHHrUYY_zkdLMGbHiXoH85h0\" --max-time 20)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:3002/ --max-time 30)",
+      "Bash(echo \"GET / -> $\\(curl -s -o /dev/null -w '%{http_code}' http://localhost:3002/ --max-time 30\\)\")",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\Authority Dashboard\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName)",
+      "Bash(Head -50)",
+      "Bash(cd \"c:\\\\\\\\Users\\\\\\\\USER\\\\\\\\Desktop\\\\\\\\Hackathon\\\\\\\\Authority Dashboard\")",
+      "PowerShell(npx tsc --noEmit)",
+      "PowerShell($p = \"c:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\Authority Dashboard\\\\key.json\"; if \\(Test-Path $p\\) { try { $j = Get-Content $p -Raw | ConvertFrom-Json; Write-Host \"key.json: VALID JSON\"; Write-Host \\(\"client_email: \" + $j.client_email\\); Write-Host \\(\"project_id: \" + $j.project_id\\); Write-Host \\(\"has private_key: \" + [bool]$j.private_key\\) } catch { Write-Host \"key.json present but NOT valid JSON\" } } else { Write-Host \"key.json NOT found in root\" })",
+      "PowerShell($keyPath = \"c:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\Authority Dashboard\\\\key.json\"; $envPath = \"c:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\Authority Dashboard\\\\.env.local\"; $key = \\(Get-Content $keyPath -Raw\\) -replace \"`r\",\"\" -replace \"`n\",\"\"; \\(Get-Content $envPath | Where-Object { $_ -notmatch '^GCP_SA_KEY=' }\\) + \"GCP_SA_KEY=$key\" | Set-Content $envPath -Encoding utf8; Write-Host \"GCP_SA_KEY written. Lines in .env.local:\"; \\(Get-Content $envPath | ForEach-Object { if \\($_ -match '^GCP_SA_KEY='\\) { 'GCP_SA_KEY=<' + \\($_.Length - 11\\) + ' chars hidden>' } else { \\($_ -split '='\\)[0] + '=...' } }\\))",
+      "PowerShell(node test-bq.mjs)",
+      "PowerShell(gcloud projects add-iam-policy-binding project-a27c9cde-2ce6-4d40-9b9 --member=\"serviceAccount:code-exp@project-a27c9cde-2ce6-4d40-9b9.iam.gserviceaccount.com\" --role=\"roles/bigquery.jobUser\" --condition=None)",
+      "PowerShell(gcloud projects add-iam-policy-binding project-a27c9cde-2ce6-4d40-9b9 --member=\"serviceAccount:code-exp@project-a27c9cde-2ce6-4d40-9b9.iam.gserviceaccount.com\" --role=\"roles/bigquery.dataViewer\" --condition=None)",
+      "PowerShell($paths = @\\(\"$env:LOCALAPPDATA\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\",\"$env:APPDATA\\\\..\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\",\"C:\\\\Program Files \\(x86\\)\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\",\"C:\\\\Program Files\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\"\\); $found = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1; if \\($found\\) { Write-Host \"FOUND: $found\" } else { Write-Host \"Not in common spots; searching...\"; Get-ChildItem -Path C:\\\\ -Filter gcloud.cmd -Recurse -ErrorAction SilentlyContinue -Depth 6 | Select-Object -First 1 -ExpandProperty FullName })",
+      "PowerShell($gcloud = \"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\"; & $gcloud projects add-iam-policy-binding project-a27c9cde-2ce6-4d40-9b9 --member=\"serviceAccount:code-exp@project-a27c9cde-2ce6-4d40-9b9.iam.gserviceaccount.com\" --role=\"roles/bigquery.jobUser\" --condition=None --quiet; Write-Host \"--- jobUser done ---\"; & $gcloud projects add-iam-policy-binding project-a27c9cde-2ce6-4d40-9b9 --member=\"serviceAccount:code-exp@project-a27c9cde-2ce6-4d40-9b9.iam.gserviceaccount.com\" --role=\"roles/bigquery.dataViewer\" --condition=None --quiet; Write-Host \"--- dataViewer done ---\")"
+    ]
+  }
+}

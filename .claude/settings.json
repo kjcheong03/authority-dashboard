@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://api-open.data.gov.sg/v1/public/api/datasets/d_dbfabf16158d1b0e1c420627c0819168/poll-download\" --max-time 25 -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(curl -s \"https://api-open.data.gov.sg/v1/public/api/datasets/d_ac1eecf0886ff0bceefbc51556247015/poll-download\" --max-time 25 -w \"\\\\nHTTP %{http_code}\\\\n\")",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -N -X POST http://localhost:3000/api/research -H \"Content-Type: application/json\" -d '{\"mode\":\"replay\"}' --max-time 35)",
+      "Bash(curl -s http://localhost:3000/ --max-time 10)",
+      "Bash(powershell -NoProfile -Command '\\(Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty OwningProcess\\) | ForEach-Object { Get-Process -Id $_ | Select-Object Id,ProcessName,Path }')",
+      "Bash(cd \"c:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\Authority Dashboard\")",
+      "Bash(echo '=== :__TRACKED_VAR__ ===')",
+      "Bash(curl -s http://localhost:__TRACKED_VAR__/ --max-time 6)"
+    ]
+  }
+}

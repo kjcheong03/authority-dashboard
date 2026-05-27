@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+:root {
+  --cara-navy: #0f2747;
+  --cara-blue: #1d4ed8;
+  --cara-teal: #0fae8e;
+  --cara-green: #16a34a;
+  --cara-forest: #0f7a52;
+  --cara-red: #dc2626;
+  --cara-amber: #b45309;
+  --cara-bg: #e5ffef;
+  --cara-panel: #ffffff;
+  --cara-line: #8c9d96;
+  --cara-ink: #0f2747;
+  --cara-muted: #6b7c8c;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--cara-bg);
+  color: var(--cara-ink);
+  font-family: var(--font-rounded), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.mono {
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+/* rich body editor — placeholder when empty (contentEditable has none natively) */
+.cara-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--cara-muted);
+  pointer-events: none;
+}
+.cara-editor strong {
+  font-weight: 800;
+}
+.cara-editor a {
+  color: var(--cara-teal);
+  text-decoration: underline;
+}
+
+/* terminal blinking cursor */
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.cursor::after {
+  content: "▋";
+  animation: blink 1s steps(1) infinite;
+  color: var(--cara-teal);
+  margin-left: 2px;
+}
+
+/* live pulse dot */
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(15, 174, 142, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(15, 174, 142, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(15, 174, 142, 0); }
+}
+.pulse {
+  animation: pulse 1.8s infinite;
+}
+
+.scroll-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scroll-thin::-webkit-scrollbar-thumb { background: #cbd5d1; border-radius: 3px; }
