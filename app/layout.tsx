@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Quicksand } from "next/font/google";
 import "./globals.css";
 
@@ -7,6 +7,11 @@ const quicksand = Quicksand({ subsets: ["latin"], weight: ["400", "500", "600", 
 export const metadata: Metadata = {
   title: "CARA · Authority Dashboard",
   description: "Validate public-health emergency topics and detect misinformation, powered by live agentic research.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

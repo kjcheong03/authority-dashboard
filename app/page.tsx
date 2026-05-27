@@ -22,15 +22,16 @@ export default function Page() {
   return (
     <div style={{ minHeight: "100vh" }}>
       {/* ── Top bar ─────────────────────────────────────────────────────── */}
-      <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 22px", background: "#1d5c43" }}>
+      <header className="topbar" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 22px", background: "#1d5c43" }}>
         <span style={{ fontSize: 18, fontWeight: 800, color: "#9fe3c4", letterSpacing: 0.5 }}>CARA</span>
         <span style={{ color: "rgba(159,227,196,0.45)" }}>|</span>
         <span style={{ fontSize: 15, fontWeight: 600, color: "#ffffff" }}>Authority Dashboard</span>
       </header>
 
       {/* ── Topic input + controls ──────────────────────────────────────── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "28px 22px 16px", flexWrap: "wrap" }}>
+      <div className="topic-row" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "28px 22px 16px", flexWrap: "wrap" }}>
         <input
+          className="topic-input"
           value={topicText}
           onChange={(e) => setTopicText(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && canRun && !state.running) start(topic, "live"); }}
@@ -60,10 +61,10 @@ export default function Page() {
       </div>
 
       {/* ── Workspace ───────────────────────────────────────────────────── */}
-      <main style={{ display: "flex", flexDirection: "column", gap: 16, padding: 18, maxWidth: 1320, margin: "0 auto", width: "100%" }}>
+      <main className="workspace" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {state.assessment && <Assessment assessment={state.assessment} />}
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1.35fr) minmax(0,1fr)", gap: 16, alignItems: "start" }}>
+        <div className="workspace-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <ResearchAgent
               running={state.running}
