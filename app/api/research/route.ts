@@ -19,7 +19,7 @@ import {
 import { REPLAY_EVENTS } from "@/lib/replay";
 
 export const runtime = "nodejs";
-export const maxDuration = 600;
+export const maxDuration = 300; // Vercel Hobby plan cap (max 300s)
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const ts = () => new Date().toTimeString().slice(0, 8);
