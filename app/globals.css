@@ -5,10 +5,10 @@
   --cara-blue: #1d4ed8;
   --cara-teal: #0fae8e;
   --cara-green: #16a34a;
-  --cara-forest: #0f7a52;
+  --cara-forest: #002C77;
   --cara-red: #dc2626;
   --cara-amber: #b45309;
-  --cara-bg: #e5ffef;
+  --cara-bg: #eef4ff;
   --cara-panel: #ffffff;
   --cara-line: #8c9d96;
   --cara-ink: #0f2747;
@@ -21,7 +21,7 @@ body {
   margin: 0;
   background: var(--cara-bg);
   color: var(--cara-ink);
-  font-family: var(--font-rounded), ui-rounded, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-rounded), "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
 }
@@ -39,7 +39,7 @@ body {
 }
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -57,6 +57,36 @@ body {
 
 .mono {
   font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Surveillance grid animations ──────────────────────────────────────── */
+@keyframes gridPulse {
+  0%, 100% { transform: scale(1);   opacity: 1;   }
+  50%      { transform: scale(1.4); opacity: 0.6; }
+}
+.grid-pulse {
+  animation: gridPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes gridScanSweep {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100%);  }
+}
+.grid-scan-line {
+  position: absolute; left: 0; right: 0; height: 28px;
+  background: linear-gradient(180deg, transparent 0%, rgba(0,44,119,0.16) 50%, transparent 100%);
+  animation: gridScanSweep 2.2s linear infinite;
+}
+.grid-scan-text {
+  position: absolute; inset: 0;
+  display: grid; place-items: center;
+  font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+  font-size: 10px; color: #002C77; letter-spacing: 1px; font-weight: 600;
 }
 
 /* rich body editor — placeholder when empty (contentEditable has none natively) */

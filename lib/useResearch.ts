@@ -10,11 +10,13 @@ export interface LogLine {
 }
 
 export interface ResearchState {
+  runId: string | null;
   running: boolean;
   phase: Phase | null;
   phaseLabel: string;
   pct: number;
   streamingUrl: string | null;
+  channelStreamingUrls: Record<string, string>;
   logs: LogLine[];
   sources: SourceRef[];
   findings: Finding[];
@@ -26,11 +28,13 @@ export interface ResearchState {
 }
 
 const initial: ResearchState = {
+  runId: null,
   running: false,
   phase: null,
   phaseLabel: "",
   pct: 0,
   streamingUrl: null,
+  channelStreamingUrls: {},
   logs: [],
   sources: [],
   findings: [],
@@ -48,12 +52,16 @@ export function useResearch() {
   const apply = useCallback((e: ServerEvent) => {
     setState((s) => {
       switch (e.type) {
+        case "RUN_ID":
+          return { ...s, runId: e.runId };
         case "PHASE":
           return { ...s, phase: e.phase, phaseLabel: e.label };
         case "PROGRESS_PCT":
           return { ...s, pct: e.pct };
         case "STREAMING_URL":
           return { ...s, streamingUrl: e.url };
+        case "CHANNEL_STREAMING_URL":
+          return { ...s, channelStreamingUrls: { ...s.channelStreamingUrls, [e.channelId]: e.url } };
         case "LOG":
           return { ...s, logs: [...s.logs, { level: e.level, message: e.message, ts: e.ts ?? "" }] };
         case "SOURCE":
@@ -133,5 +141,44 @@ export function useResearch() {
     setState((s) => ({ ...s, running: false }));
   }, []);
 
-  return { state, start, stop };
+  // Hydrate the dashboard from a saved run (no pipeline replay needed). The
+  // server route /api/runs/[id] returns the full HydratedRun JSON.
+  const loadRun = useCallback(async (runId: string) => {
+    abortRef.current?.abort();
+    try {
+      const res = await fetch(`/api/runs/${runId}`);
+      if (!res.ok) throw new Error(`Load failed: ${res.status}`);
+      const h = (await res.json()) as {
+        run: { id: string; topic: string; status: string; phase: string | null; pct: number };
+        findings: Finding[];
+        claims: Claim[];
+        spread: Spread | null;
+        assessment: Assessment | null;
+        draft: Draft | null;
+        sources: SourceRef[];
+      };
+      setState({
+        ...initial,
+        runId: h.run.id,
+        phase: (h.run.phase as Phase | null) ?? "done",
+        phaseLabel: "Loaded from history",
+        pct: 100,
+        findings: h.findings,
+        claims: h.claims,
+        spread: h.spread,
+        assessment: h.assessment,
+        draft: h.draft,
+        sources: h.sources,
+      });
+      // Drop the ?run=<id> from the address bar so the URL doesn't get stuck
+      // pointing at a loaded run after the officer moves on.
+      if (typeof window !== "undefined" && window.location.search.includes("run=")) {
+        window.history.replaceState({}, "", window.location.pathname);
+      }
+    } catch (err) {
+      setState((s) => ({ ...s, error: (err as Error).message }));
+    }
+  }, []);
+
+  return { state, start, stop, loadRun };
 }

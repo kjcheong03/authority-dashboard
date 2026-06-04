@@ -2,7 +2,7 @@
  * Exportable advisory report — self-contained HTML opened in a new tab with a
  * "Save as PDF" button (window.print).
  *
- * Style mirrors the dashboard: Quicksand rounded font, green header, white
+ * Style mirrors the dashboard: Inter sans-serif, navy header, white
  * rounded cards, minimalist.
  * ─────────────────────────────────────────────────────────────────────────── */
 
@@ -17,7 +17,7 @@ const escRich = (s: string) =>
     .replace(/\*\*([^*]+?)\*\*/g, "<strong>$1</strong>")
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
 
-const FOREST = "#0f7a52";
+const FOREST = "#002C77"; // brand deep navy (Singapore government blue)
 const INK = "#0f2747";
 const DANGER = "#dc2626";
 const AMBER = "#b45309";
@@ -187,10 +187,10 @@ function generateHTML(p: ReportParams): string {
 <html lang="en"><head><meta charset="UTF-8">
 <title>CARA Advisory — ${esc(p.topic.topic).slice(0, 60)}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root { --ink:${INK}; --muted:#6b7c8c; --line:#dbe6e2; --forest:${FOREST}; }
-  body { font-family: 'Quicksand', ui-rounded, "Segoe UI", system-ui, sans-serif; font-weight: 500; color: var(--ink);
+  body { font-family: 'Inter', "Segoe UI", system-ui, -apple-system, sans-serif; font-weight: 500; color: var(--ink);
     background: #eef6f1; max-width: 820px; margin: 0 auto; padding: 0 0 40px; font-size: 13px; line-height: 1.55;
     -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   @media print { .no-print { display: none; } .card, .finding, .tile, .otl-row, .claim { page-break-inside: avoid; } }
@@ -202,8 +202,8 @@ function generateHTML(p: ReportParams): string {
 
   /* green header bar — like the navbar */
   .nav { background: var(--forest); padding: 16px 28px; display: flex; align-items: center; gap: 10px; }
-  .nav b { color: #9fe3c4; font-weight: 700; font-size: 18px; letter-spacing: 0.5px; }
-  .nav span { color: rgba(159,227,196,.55); }
+  .nav b { color: #A6C8FF; font-weight: 700; font-size: 18px; letter-spacing: 0.5px; }
+  .nav span { color: rgba(166,200,255,.55); }
   .nav i { color: #fff; font-style: normal; font-weight: 600; font-size: 14px; }
 
   .head { padding: 24px 28px 6px; }

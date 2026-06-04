@@ -1,8 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Quicksand } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const quicksand = Quicksand({ subsets: ["latin"], weight: ["400", "500", "600", "700"], variable: "--font-rounded", display: "swap" });
+// Inter — neutral, modern, dense sans used widely in dashboards and gov data UIs.
+// Kept under --font-rounded so existing references (globals.css, DraftPanel) don't change.
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-rounded", display: "swap" });
 
 export const metadata: Metadata = {
   title: "CARA · Authority Dashboard",
@@ -16,7 +18,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={quicksand.variable}>
+    <html lang="en" className={inter.variable}>
       <body>{children}</body>
     </html>
   );

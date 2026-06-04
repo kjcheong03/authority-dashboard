@@ -29,7 +29,11 @@ SOURCE PRIORITY (this matters):
    Health Promotion Board (healthhub.sg / hpb.gov.sg), HSA (hsa.gov.sg), gov.sg, and
    Singapore public hospitals. Capture Singapore-specific figures (local case counts,
    clusters, advisories, schemes).
-2. SECONDARY — use WHO and (sparingly) US CDC / ECDC ONLY for global context the local
+2. ALWAYS search data.gov.sg — visit https://data.gov.sg/datasets?query=<topic> and find
+   any open datasets relevant to "${t.topic}". If found, include at least one finding
+   tagged with agency "data.gov.sg" (or the publishing agency) AND a url that contains
+   "data.gov.sg". Capture the most recent statistic the dataset surfaces.
+3. SECONDARY — use WHO and (sparingly) US CDC / ECDC ONLY for global context the local
    sources don't cover (e.g. background on a novel pathogen). Clearly mark these as global.
 
 Aim for mostly Singapore findings with at most one or two global-context findings.

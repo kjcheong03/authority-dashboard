@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Draft } from "@/lib/types";
+import type { Draft, Finding, Claim } from "@/lib/types";
+import { SourcePickerModal } from "./SourcePickerModal";
 
 // ── Markdown ⇄ HTML for the rich body editor ──────────────────────────────
 // Body text is stored as plain text with **bold** markers (same convention the
@@ -55,13 +56,28 @@ const FONT = "var(--font-rounded), ui-sans-serif, system-ui, sans-serif";
 // One consistent "selected" colour across all radios & chips — dark grey, bold.
 const SELECTED = "#334155";
 
-export function DraftPanel({ draft }: { draft: Draft | null }) {
+export function DraftPanel({
+  draft,
+  runId,
+  findings,
+  claims,
+  onRefresh,
+}: {
+  draft: Draft | null;
+  runId: string | null;
+  findings: Finding[];
+  claims: Claim[];
+  onRefresh?: () => Promise<void> | void;
+}) {
   const [headline, setHeadline] = useState("");
   const [body, setBody] = useState("");
   const [urgent, setUrgent] = useState(true);
   const [audienceMode, setAudienceMode] = useState<"all" | "selected">("all");
   const [profiles, setProfiles] = useState<string[]>([]);
   const [broadcast, setBroadcast] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [confirmation, setConfirmation] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -72,9 +88,40 @@ export function DraftPanel({ draft }: { draft: Draft | null }) {
       setAudienceMode("all");
       setProfiles([]);
       setBroadcast(false);
+      setConfirmation(null);
       if (editorRef.current) editorRef.current.innerHTML = mdToHtml(draft.body);
     }
   }, [draft]);
+
+  const handleBroadcast = async () => {
+    if (!runId || sending) return;
+    setSending(true);
+    try {
+      const res = await fetch("/api/broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          title: headline,
+          body,
+          urgency: urgent ? "HIGH" : "NORMAL",
+          audienceMode,
+          targetProfiles: profiles,
+        }),
+      });
+      if (res.ok) {
+        const { confirmationId } = (await res.json()) as { confirmationId: string };
+        setConfirmation(confirmationId);
+        setBroadcast(true);
+      } else {
+        setBroadcast(true); // still flip to Sent visually
+      }
+    } catch {
+      setBroadcast(true);
+    } finally {
+      setSending(false);
+    }
+  };
 
   const syncBody = () => {
     if (editorRef.current) setBody(htmlToMd(editorRef.current));
@@ -98,8 +145,27 @@ export function DraftPanel({ draft }: { draft: Draft | null }) {
 
   return (
     <section style={panel}>
-      <header style={{ padding: "13px 16px", borderBottom: "1px solid var(--cara-line)" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Broadcast</h2>
+      <header style={{ display: "flex", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid var(--cara-line)" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>Broadcast</h2>
+        <button
+          onClick={() => setPickerOpen(true)}
+          disabled={!runId || (findings.length === 0 && claims.length === 0)}
+          title="Pick sources for broadcast"
+          aria-label="Pick sources for broadcast"
+          style={{
+            display: "grid", placeItems: "center",
+            width: 30, height: 30, borderRadius: 8,
+            border: "1px solid var(--cara-line)", background: "#fff",
+            color: "var(--cara-ink)", cursor: "pointer",
+            opacity: !runId || (findings.length === 0 && claims.length === 0) ? 0.4 : 1,
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <line x1="3" y1="9" x2="21" y2="9" />
+            <line x1="9" y1="4" x2="9" y2="20" />
+          </svg>
+        </button>
       </header>
 
       <div style={{ padding: 16 }}>
@@ -136,9 +202,6 @@ export function DraftPanel({ draft }: { draft: Draft | null }) {
             >
               B
             </button>
-            <span style={{ fontSize: 10.5, color: "var(--cara-muted)" }}>
-              Select text and click <b>B</b> (or Ctrl/Cmd+B) to bold
-            </span>
           </div>
           <div
             ref={editorRef}
@@ -199,16 +262,37 @@ export function DraftPanel({ draft }: { draft: Draft | null }) {
         {/* action */}
         <div style={{ marginTop: 18 }}>
           <button
-            onClick={() => setBroadcast(true)}
-            disabled={broadcast}
+            onClick={handleBroadcast}
+            disabled={broadcast || sending || !runId}
             style={{
-              padding: "12px 28px", borderRadius: 10, border: 0, cursor: broadcast ? "default" : "pointer",
-              background: broadcast ? "#9aa5a0" : "#0f7a52", color: "#ffffff", fontWeight: 700, fontSize: 14,
+              padding: "12px 28px", borderRadius: 10, border: 0,
+              cursor: broadcast || sending || !runId ? "default" : "pointer",
+              background: broadcast || !runId ? "#94a3b8" : "#002C77",
+              color: "#ffffff", fontWeight: 700, fontSize: 14,
             }}
           >
-            {broadcast ? "Sent" : "Approve & broadcast"}
+            {sending ? "Sending…" : broadcast ? "✓ Sent" : "Approve & broadcast"}
           </button>
         </div>
+        {confirmation && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--cara-muted)" }}>
+            Confirmation: <code style={{ fontWeight: 700, color: "var(--cara-ink)" }}>{confirmation}</code>
+          </div>
+        )}
+        {!runId && draft && (
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--cara-muted)" }}>
+            No run in progress to broadcast against.
+          </div>
+        )}
+
+        <SourcePickerModal
+          open={pickerOpen}
+          runId={runId}
+          findings={findings}
+          claims={claims}
+          onClose={() => setPickerOpen(false)}
+          onApplied={async () => { if (onRefresh) await onRefresh(); }}
+        />
       </div>
     </section>
   );

@@ -63,7 +63,7 @@ interface Row {
   sg: boolean;
 }
 
-export async function querySpreadBigQuery(keyword: string): Promise<SpreadSignal | null> {
+export async function querySpreadBigQuery(keyword: string, endDate?: string): Promise<SpreadSignal | null> {
   if (!bigQueryEnabled()) return null;
   try {
     const { BigQuery } = await import("@google-cloud/bigquery");
@@ -74,7 +74,19 @@ export async function querySpreadBigQuery(keyword: string): Promise<SpreadSignal
     });
     const kw = `%${keyword.toLowerCase()}%`;
 
-    const query = `
+    // For historical queries (endDate in the past), anchor the WINDOW_DAYS-long
+    // window to that date instead of NOW. Otherwise use the most recent window.
+    const isHistorical = !!endDate && Date.parse(endDate) < Date.now() - 86400_000;
+    const query = isHistorical
+      ? `
+      SELECT
+        CAST(DATE / 1000000 AS INT64) AS day,
+        SAFE_CAST(SPLIT(V2Tone, ',')[OFFSET(0)] AS FLOAT64) AS tone,
+        REGEXP_CONTAINS(LOWER(IFNULL(V2Locations, '')), 'singapore') AS sg
+      FROM \`gdelt-bq.gdeltv2.gkg_partitioned\`
+      WHERE _PARTITIONTIME BETWEEN TIMESTAMP_SUB(TIMESTAMP(@end_date), INTERVAL @days DAY) AND TIMESTAMP(@end_date)
+        AND (LOWER(IFNULL(DocumentIdentifier, '')) LIKE @kw OR LOWER(IFNULL(AllNames, '')) LIKE @kw)`
+      : `
       SELECT
         CAST(DATE / 1000000 AS INT64) AS day,
         SAFE_CAST(SPLIT(V2Tone, ',')[OFFSET(0)] AS FLOAT64) AS tone,
@@ -85,7 +97,9 @@ export async function querySpreadBigQuery(keyword: string): Promise<SpreadSignal
 
     const [rows] = (await bq.query({
       query,
-      params: { days: WINDOW_DAYS, kw },
+      params: isHistorical
+        ? { days: WINDOW_DAYS, kw, end_date: `${endDate} 23:59:59` }
+        : { days: WINDOW_DAYS, kw },
       maximumBytesBilled: MAX_BYTES_BILLED,
     })) as unknown as [Row[]];
 

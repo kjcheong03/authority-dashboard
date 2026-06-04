@@ -81,18 +81,9 @@ function SpreadStat({ label, velocity, sub, chart, range, colorMap }: { label: s
   );
 }
 
-export function Misinfo({ claims, spread }: { claims: Claim[]; spread: Spread | null }) {
+export function Misinfo({ claims }: { claims: Claim[]; spread: Spread | null }) {
   return (
     <div>
-      {spread ? (
-        <SpreadBanner spread={spread} />
-      ) : (
-        claims.length > 0 && (
-          <div style={{ padding: "8px 16px", borderBottom: "1px solid var(--cara-line)", background: "#fbfdfc", fontSize: 10.5, color: "var(--cara-muted)" }}>
-            GDELT coverage signal unavailable this run · via GDELT
-          </div>
-        )
-      )}
       <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
         {claims.length === 0 && <p style={{ fontSize: 13, color: "var(--cara-muted)", margin: 0 }}>...</p>}
         <AnimatePresence>

@@ -109,8 +109,10 @@ export interface Draft {
 /* ─── Server → client event protocol ──────────────────────────────────────── */
 
 export type ServerEvent =
+  | { type: "RUN_ID"; runId: string } // emitted first; client stores for autofill / re-broadcast
   | { type: "PHASE"; phase: Phase; label: string }
   | { type: "STREAMING_URL"; url: string }
+  | { type: "CHANNEL_STREAMING_URL"; channelId: string; url: string } // per-tile stream tag
   | { type: "LOG"; level: "info" | "warn" | "ok"; message: string; ts?: string }
   | { type: "SOURCE"; source: SourceRef }
   | { type: "FINDING"; finding: Finding }

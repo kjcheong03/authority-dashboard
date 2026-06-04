@@ -1,0 +1,34 @@
+import { saveBroadcast, listBroadcasts } from "@/lib/db";
+
+export const runtime = "nodejs";
+
+interface PostBody {
+  runId: string;
+  title: string;
+  body: string;
+  urgency: "HIGH" | "NORMAL";
+  audienceMode: "all" | "selected";
+  targetProfiles: string[];
+}
+
+export async function POST(req: Request) {
+  const b = (await req.json().catch(() => ({}))) as Partial<PostBody>;
+  if (!b.runId || !b.title || !b.body) {
+    return new Response("Missing required fields", { status: 400 });
+  }
+  const result = await saveBroadcast({
+    runId: b.runId,
+    title: b.title,
+    body: b.body,
+    urgency: b.urgency === "NORMAL" ? "NORMAL" : "HIGH",
+    audienceMode: b.audienceMode === "selected" ? "selected" : "all",
+    targetProfiles: b.targetProfiles ?? [],
+  });
+  if (!result) return new Response("Failed to record broadcast", { status: 500 });
+  return Response.json(result);
+}
+
+export async function GET() {
+  const broadcasts = await listBroadcasts(20);
+  return Response.json(broadcasts);
+}

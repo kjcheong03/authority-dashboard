@@ -5,18 +5,28 @@ import { getSpread } from "@/lib/spread";
 import { fetchDengueClusters } from "@/lib/datagovsg";
 import { searchFactChecks, factCheckEnabled } from "@/lib/factcheck";
 import {
-  ingestGoal,
-  INGEST_START_URL,
-  misinfoGoal,
-  MISINFO_START_URL,
   classifyClaims,
   traceOrigins,
   generateAssessment,
   generateDraft,
-  type IngestResult,
   type RawClaim,
 } from "@/lib/agents";
+import { VERIFIED_AGENTS, ONLINE_AGENTS } from "@/lib/channelAgents";
 import { REPLAY_EVENTS } from "@/lib/replay";
+import {
+  createRun,
+  updateRun,
+  markRunDone,
+  saveFinding,
+  saveClaim,
+  saveClaimOrigin,
+  saveClaimFactchecks,
+  saveSpread,
+  saveAssessment,
+  saveDraft,
+  saveSource,
+  saveLog,
+} from "@/lib/db";
 
 export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel Hobby plan cap (max 300s)
@@ -56,51 +66,158 @@ export async function POST(req: NextRequest) {
 
   const enc = new TextEncoder();
 
+  // Create the DB row immediately so the client can autofill / re-broadcast later.
+  const runId = await createRun({
+    topic: topic.topic,
+    region: topic.region,
+    audience: topic.audience,
+    mode: replay ? "replay" : "live",
+  });
+
+  // Persistence ordinal counters (preserve emit order in DB).
+  const ord = { finding: 0, claim: 0, source: 0 };
+
+  // Serialise DB writes so CLAIM lands before its ORIGIN/FACTCHECK references it.
+  let persistChain: Promise<void> = Promise.resolve();
+  const persist = (fn: () => Promise<void>) => {
+    persistChain = persistChain.then(fn).catch((e) => console.warn("[db]", e));
+  };
+
   const stream = new ReadableStream({
     async start(controller) {
+      // The client's AbortController fires this on Stop. We mark the run stopped
+      // and short-circuit any further work.
+      let aborted = false;
+      const onAbort = () => {
+        aborted = true;
+        markRunDone(runId, "stopped").catch(() => {});
+        try { controller.close(); } catch { /* already closed */ }
+      };
+      req.signal.addEventListener("abort", onAbort);
+
       const send = (e: ServerEvent) => {
+        if (aborted) return;
         try {
           controller.enqueue(enc.encode(`data: ${JSON.stringify(e)}\n\n`));
         } catch {
           /* stream closed */
         }
+        // Persist every event in order.
+        switch (e.type) {
+          case "PHASE":
+            persist(() => updateRun(runId, { phase: e.phase }));
+            break;
+          case "PROGRESS_PCT":
+            persist(() => updateRun(runId, { pct: e.pct }));
+            break;
+          case "STREAMING_URL":
+            persist(() => updateRun(runId, { streaming_url: e.url }));
+            break;
+          case "LOG":
+            persist(() => saveLog(runId, e.level, e.message, e.ts));
+            break;
+          case "SOURCE":
+            persist(() => saveSource(runId, e.source, ord.source++));
+            break;
+          case "FINDING":
+            persist(() => saveFinding(runId, e.finding, ord.finding++));
+            break;
+          case "CLAIM":
+            persist(async () => { await saveClaim(runId, e.claim, ord.claim++); });
+            break;
+          case "ORIGIN":
+            persist(() => saveClaimOrigin(runId, e.claimId, e.origin));
+            break;
+          case "FACTCHECK":
+            persist(() => saveClaimFactchecks(runId, e.claimId, e.factChecks));
+            break;
+          case "SPREAD":
+            persist(() => saveSpread(runId, e.spread));
+            break;
+          case "ASSESSMENT":
+            persist(() => saveAssessment(runId, e.assessment));
+            break;
+          case "DRAFT":
+            persist(() => saveDraft(runId, e.draft));
+            break;
+        }
       };
+
+      // Hand the runId to the client right away so it can save / re-broadcast.
+      if (runId) send({ type: "RUN_ID", runId });
 
       if (replay) {
         await streamReplay(send);
+        await persistChain;
+        await markRunDone(runId, "complete");
         controller.close();
         return;
       }
 
       try {
-        /* ─── PHASE 1: INGEST official guidance ──────────────────────────── */
+        /* ─── PHASE 1: INGEST — 5 verified-source agents in parallel ─────── */
         send({ type: "PHASE", phase: "ingest", label: "High-priority ingest" });
-        send({ type: "LOG", level: "info", message: `Initialising research on "${topic.topic}"`, ts: ts() });
+        send({ type: "LOG", level: "info", message: `Initialising research on "${topic.topic}" across ${Object.keys(VERIFIED_AGENTS).length} verified sources…`, ts: ts() });
 
         let pct = 5;
         send({ type: "PROGRESS_PCT", pct });
 
-        // Authoritative SG ground-truth (data.gov.sg) — runs in parallel with the agent.
+        // data.gov.sg ground-truth (NEA dengue clusters) — supplementary enrichment
+        // that runs alongside the per-source TinyFish agents.
         const isDengue = /dengue/i.test(topic.topic);
         const clustersPromise = isDengue ? fetchDengueClusters() : Promise.resolve(null);
 
-        const ingestRaw = await runAgent({
-          url: INGEST_START_URL,
-          goal: ingestGoal(topic),
-          onStreamingUrl: (url) => send({ type: "STREAMING_URL", url }),
-          onProgress: (purpose) => {
-            pct = Math.min(45, pct + 4);
-            send({ type: "LOG", level: "info", message: purpose, ts: ts() });
-            send({ type: "PROGRESS_PCT", pct });
-          },
-        });
+        // Fire all verified-source TinyFish sessions IN PARALLEL. Each session
+        // streams its own browser URL → tagged to the tile in the surveillance
+        // grid via CHANNEL_STREAMING_URL. Promise.allSettled so one stalled site
+        // doesn't kill the whole phase.
+        const verifiedTasks = Object.entries(VERIFIED_AGENTS).map(([channelId, cfg]) => ({ channelId, cfg }));
+        send({ type: "LOG", level: "info", message: `Firing ${verifiedTasks.length} parallel TinyFish sessions: ${verifiedTasks.map((t) => t.channelId.toUpperCase()).join(", ")}`, ts: ts() });
 
-        const ingest = coerceResult<IngestResult>(ingestRaw) ?? {};
-        const findings: Finding[] = (ingest.findings ?? []).map((f) => ({
-          ...f,
-          timeAgo: f.timeAgo ?? `${Math.floor(Math.random() * 40) + 5} mins ago`,
-        }));
-        const advisorySummary = ingest.advisory_summary ?? "";
+        const verifiedResults = await Promise.allSettled(
+          verifiedTasks.map(({ channelId, cfg }) =>
+            runAgent({
+              url: cfg.startUrl(topic.topic),
+              goal: cfg.goal(topic.topic),
+              outputSchema: cfg.outputSchema as Record<string, unknown>,
+              onStreamingUrl: (url) => send({ type: "CHANNEL_STREAMING_URL", channelId, url }),
+              onProgress: (purpose) => {
+                pct = Math.min(45, pct + 1);
+                send({ type: "LOG", level: "info", message: `${channelId.toUpperCase()}: ${purpose}`, ts: ts() });
+                send({ type: "PROGRESS_PCT", pct });
+              },
+            }).then((raw) => ({ channelId, raw })),
+          ),
+        );
+
+        // Collect findings from each successful session. Force the agency tag
+        // so it always matches the channel that produced it (the agent may
+        // tag inconsistently otherwise).
+        const findings: Finding[] = [];
+        const summaryParts: string[] = [];
+        const channelDisplayName: Record<string, string> = {
+          moh: "MOH", nea: "NEA", who: "WHO", cdc: "CDC", healthhub: "HealthHub",
+        };
+        for (const r of verifiedResults) {
+          if (r.status !== "fulfilled") {
+            send({ type: "LOG", level: "warn", message: `Verified-source agent failed: ${r.reason}`, ts: ts() });
+            continue;
+          }
+          const { channelId, raw } = r.value;
+          const parsed = coerceResult<{ findings?: Finding[]; advisory_summary?: string }>(raw) ?? {};
+          const agencyTag = channelDisplayName[channelId] ?? channelId;
+          const channelFindings = (parsed.findings ?? []).map((f) => ({
+            ...f,
+            agency: agencyTag, // pin agency to its channel — drives source-picker attribution
+            timeAgo: f.timeAgo ?? `${Math.floor(Math.random() * 40) + 5} mins ago`,
+          }));
+          findings.push(...channelFindings);
+          if (parsed.advisory_summary) summaryParts.push(parsed.advisory_summary);
+          send({ type: "LOG", level: "ok", message: `${agencyTag}: ${channelFindings.length} finding${channelFindings.length === 1 ? "" : "s"}`, ts: ts() });
+          // Also surface the channel's site as a consulted-source chip.
+          send({ type: "SOURCE", source: { name: agencyTag, url: `https://www.${channelId === "healthhub" ? "healthhub.sg" : channelId === "who" ? "who.int" : channelId === "cdc" ? "cdc.gov" : channelId + ".gov.sg"}` } });
+        }
+        const advisorySummary = summaryParts.join(" ");
 
         // Fold in authoritative data.gov.sg dengue-cluster data as verified findings.
         const clusters = await clustersPromise;
@@ -130,23 +247,19 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        for (const s of ingest.sources ?? []) {
-          send({ type: "SOURCE", source: s });
-          await delay(120);
-        }
         send({ type: "LOG", level: "ok", message: `Extracted ${findings.length} verified findings`, ts: ts() });
         for (const f of findings) {
           send({ type: "FINDING", finding: f });
-          await delay(400);
+          await delay(250);
         }
         pct = 50;
         send({ type: "PROGRESS_PCT", pct });
 
-        /* ─── PHASE 2: MISINFORMATION scan (seeded feed + live GDELT) ─────── */
+        /* ─── PHASE 2: MISINFO — 7 online-source agents in parallel ─────── */
         send({ type: "PHASE", phase: "misinfo", label: "Cross-referencing public claims" });
-        send({ type: "LOG", level: "info", message: "Scanning public channels for confusion signals…", ts: ts() });
+        send({ type: "LOG", level: "info", message: `Scanning ${Object.keys(ONLINE_AGENTS).length} online channels for confusion signals…`, ts: ts() });
 
-        // LIVE signal in parallel — real-world coverage velocity.
+        // LIVE GDELT signal — real-world coverage velocity, runs alongside.
         const spreadPromise = getSpread(spreadKeyword).then((sig) => {
           if (sig) {
             send({
@@ -160,18 +273,47 @@ export async function POST(req: NextRequest) {
           return sig;
         });
 
-        const misinfoRaw = await runAgent({
-          url: MISINFO_START_URL,
-          goal: misinfoGoal(topic),
-          onStreamingUrl: (url) => send({ type: "STREAMING_URL", url }),
-          onProgress: (purpose) => {
-            pct = Math.min(75, pct + 3);
-            send({ type: "LOG", level: "warn", message: purpose, ts: ts() });
-            send({ type: "PROGRESS_PCT", pct });
-          },
-        });
+        // Fire all online-channel TinyFish sessions IN PARALLEL.
+        const onlineTasks = Object.entries(ONLINE_AGENTS).map(([channelId, cfg]) => ({ channelId, cfg }));
+        const onlineDisplay: Record<string, string> = {
+          reddit: "r/singapore", hwz: "HardwareZone", mothership: "Mothership",
+          telegram: "Telegram", tiktok: "TikTok", facebook: "Facebook", ddg: "DuckDuckGo",
+        };
+        send({ type: "LOG", level: "info", message: `Firing ${onlineTasks.length} parallel TinyFish sessions: ${onlineTasks.map((t) => t.channelId.toUpperCase()).join(", ")}`, ts: ts() });
 
-        const rawClaims = (coerceResult<{ claims?: RawClaim[] }>(misinfoRaw)?.claims ?? []) as RawClaim[];
+        const onlineResults = await Promise.allSettled(
+          onlineTasks.map(({ channelId, cfg }) =>
+            runAgent({
+              url: cfg.startUrl(topic.topic),
+              goal: cfg.goal(topic.topic),
+              outputSchema: cfg.outputSchema as Record<string, unknown>,
+              onStreamingUrl: (url) => send({ type: "CHANNEL_STREAMING_URL", channelId, url }),
+              onProgress: (purpose) => {
+                pct = Math.min(75, pct + 1);
+                send({ type: "LOG", level: "warn", message: `${channelId.toUpperCase()}: ${purpose}`, ts: ts() });
+                send({ type: "PROGRESS_PCT", pct });
+              },
+            }).then((raw) => ({ channelId, raw })),
+          ),
+        );
+
+        // Pool claims from each successful session, tagging each with its channel.
+        const rawClaims: RawClaim[] = [];
+        for (const r of onlineResults) {
+          if (r.status !== "fulfilled") {
+            send({ type: "LOG", level: "warn", message: `Online-source agent failed: ${r.reason}`, ts: ts() });
+            continue;
+          }
+          const { channelId, raw } = r.value;
+          const parsed = coerceResult<{ claims?: RawClaim[] }>(raw) ?? {};
+          const channelTag = onlineDisplay[channelId] ?? channelId;
+          const channelClaims = (parsed.claims ?? []).map((c) => ({
+            ...c,
+            where: c.where || channelTag, // pin to source channel
+          }));
+          rawClaims.push(...channelClaims);
+          send({ type: "LOG", level: "ok", message: `${channelTag}: ${channelClaims.length} claim${channelClaims.length === 1 ? "" : "s"} surfaced`, ts: ts() });
+        }
         const spread = await spreadPromise;
 
         send({ type: "LOG", level: "info", message: `Classifying ${rawClaims.length} claims against verified guidance…`, ts: ts() });
@@ -274,10 +416,16 @@ export async function POST(req: NextRequest) {
         send({ type: "LOG", level: "ok", message: "Research complete. Draft ready for officer review.", ts: ts() });
         send({ type: "PHASE", phase: "done", label: "Research complete" });
         send({ type: "COMPLETE" });
+        await persistChain;
+        if (!aborted) await markRunDone(runId, "complete");
       } catch (err) {
-        send({ type: "ERROR", message: err instanceof Error ? err.message : "Unknown error" });
+        const msg = err instanceof Error ? err.message : "Unknown error";
+        send({ type: "ERROR", message: msg });
+        await persistChain;
+        if (!aborted) await markRunDone(runId, "failed", msg);
       } finally {
-        controller.close();
+        req.signal.removeEventListener("abort", onAbort);
+        try { controller.close(); } catch { /* already closed */ }
       }
     },
   });
