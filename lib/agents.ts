@@ -335,12 +335,46 @@ Be terse. Return ONLY JSON:
 
 /* ─── OpenAI: generate caregiver-facing draft ─────────────────────────────── */
 
+/** Stats lifted from the live hazard card so the draft Situation matches what
+ *  the officer is actually looking at on-screen (e.g. "58,300 weekly cases ·
+ *  480 senior hospitalisations · GDELT SURGING"). Passed by the route. */
+export interface HazardSnapshot {
+  cases?: string | number;
+  casesLabel?: string;
+  trend?: string;
+  hospitalisations?: string | number;
+  hospitalisationsLabel?: string;
+  icu?: string | number;
+  asOf?: string;
+  source?: string;
+  gdelt?: {
+    mentions30d?: string | number;
+    velocity?: string;
+  };
+}
+
+function formatHazardSnapshot(h: HazardSnapshot): string {
+  const lines: string[] = [];
+  if (h.cases !== undefined) lines.push(`- ${h.cases} ${h.casesLabel ?? "cases"}${h.trend ? ` (${h.trend})` : ""}`);
+  if (h.hospitalisations !== undefined) lines.push(`- ${h.hospitalisations} ${h.hospitalisationsLabel ?? "hospitalisations"}`);
+  if (h.icu !== undefined) lines.push(`- ${h.icu} in ICU`);
+  if (h.gdelt?.velocity) lines.push(`- Online discussion: ${h.gdelt.velocity}${h.gdelt.mentions30d !== undefined ? ` (${h.gdelt.mentions30d} mentions in last 30d)` : ""}`);
+  const meta = [h.source, h.asOf].filter(Boolean).join(" · ");
+  if (meta) lines.push(`- Source: ${meta}`);
+  return lines.join("\n");
+}
+
 export async function generateDraft(
   t: TopicInput,
   advisorySummary: string,
   findings: Finding[],
   claims: Omit<Claim, "id">[],
+  hazard?: HazardSnapshot | null,
 ): Promise<Draft> {
+  const hazardBlock = hazard
+    ? `\n\nLIVE DASHBOARD STATS (authoritative — Situation section MUST use these exact numbers, do not invent or substitute):\n${formatHazardSnapshot(hazard)}`
+    : "";
+
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
@@ -351,43 +385,63 @@ export async function generateDraft(
       messages: [
         {
           role: "system",
-          content: `You are CARA drafting an official public-health advisory for caregivers.
+          content: `You are CARA drafting an official public-health advisory for ELDERLY CAREGIVERS in Singapore.
 
-TITLE — make it a SHORT, plain-language takeaway of the single most important fact (max ~8 words). State the conclusion, not a label.
+DASHBOARD WINS (highest-priority rule — read first)
+If LIVE DASHBOARD STATS are supplied in the user message, they are the SINGLE SOURCE OF TRUTH for the Situation section. Every number, date, and trend in the Situation MUST come from the dashboard block. Do NOT use case counts, weekly totals, hospitalisation figures, or date ranges that appear in the verified findings — those findings may quote OLD MOH press releases for entirely different weeks. The dashboard reflects what the officer is looking at on screen RIGHT NOW; the findings do not.
+
+Concretely:
+- The "asOf" / date in the dashboard block IS the period to write about. If the dashboard says "as of 11 Dec 2023", the Situation is about that period — even if a finding mentions "27 April to 3 May 2025".
+- Use the dashboard's "cases" + "casesLabel" verbatim (e.g. "58,300 weekly cases"). Do NOT substitute "14,200" or any other number from findings.
+- Use the dashboard's "hospitalisations" + "icu" verbatim.
+- Include the dashboard's "gdelt.velocity" as the spread/discussion signal (e.g. "online discussion surging" if velocity is SURGING).
+- If the dashboard is absent (no live card for this topic), then and only then fall back to the verified findings for the Situation numbers.
+
+AUDIENCE FILTER (also critical)
+Caregivers are not virologists, not lab scientists, not NEA operators. OMIT — do not paraphrase, just OMIT — any verified finding that is purely:
+  - virology (variant names like "JN.1 / XBB descendants", lineage classification)
+  - backend surveillance (wastewater monitoring, sequencing protocols, contact-tracing infrastructure)
+  - chemistry / lab science (disinfectant active ingredients, viral envelope structure, ppm concentrations)
+  - policy mechanics aimed at agencies (procurement, inter-ministerial coordination)
+A finding belongs in the broadcast ONLY if it leads to a clear caregiver action OR is a stat that helps the caregiver gauge risk. Caregivers care about: symptoms to watch in the elder, when to bring them to a clinic / A&E, vaccination eligibility for seniors, current case trend, hygiene basics at home, who's at high risk.
+
+If a finding is technical, TRANSLATE it into one of those caregiver-actionable items instead of repeating it. Example: "wastewater levels rising" → "case numbers are trending up — stay alert to symptoms"; "JN.1 descendant variants dominate" → (just drop it entirely; no caregiver action).
+
+TITLE — short, plain-language takeaway of the single most important fact (max ~8 words). State the conclusion, not a label.
   Good: "No Hantavirus outbreak in Singapore", "Dengue surging in East Region — protect the elderly"
   Bad:  "Public Health Advisory: Hantavirus Update for Caregivers of the Elderly in East Region"
 
-BODY — write these labeled sections. Each label is its own line wrapped in **double asterisks**, the content follows on the next line, and sections are separated by a blank line (\\n\\n). Keep each section to 1-2 SHORT sentences. Base everything ONLY on the verified findings. Use exactly these labels and order:
+BODY — labeled sections. Each label is its own line wrapped in **double asterisks**, content on the next line, sections separated by a blank line (\\n\\n). Each section 1-2 SHORT sentences. Use exactly these labels and this order:
 
 **Situation**
-What is actually happening, calmly.
+What is actually happening, calmly. Use the LIVE DASHBOARD STATS verbatim if provided (do not invent different numbers). Mention the GDELT velocity ("surging discussion online") if it is in the dashboard stats.
 
 **Facts**
-The verified truth about the topic.
+The verified truth about the topic — caregiver-relevant only. After applying the audience filter above, what's left? Usually: case trend, who's most at risk, vaccination/medication eligibility for seniors.
 
 **Misinformation spreading**
 The false claim(s) circulating and a direct, plain correction. If none was detected, write "No significant misinformation detected."
 
 **What to do**
-The key protective action(s). If no action is needed, say "No special precautions needed." Always finish by naming symptoms to watch with 2-3 concrete examples and when to seek care.
+The key protective action(s). If no action is needed, say "No special precautions needed." Always finish by naming symptoms to watch with 2-3 concrete examples (e.g. "fever above 38°C, breathlessness, drowsiness") and when to seek care (e.g. "GP within 24h, A&E if breathless").
 
 **Sources**
-List each official source on its OWN line (one per line, separated by a single newline — NOT " · "). Each line is a markdown link using the site DOMAIN as the visible text, followed by the full agency name in parentheses. Build links only from REAL urls in the verified findings — never invent urls. Example:
+List each official source on its OWN line. Each line is a markdown link using the site DOMAIN as the visible text, followed by the full agency name in parentheses. Use ONLY real urls present in the verified findings — never invent urls. Example:
 [www.moh.gov.sg](https://www.moh.gov.sg) (Ministry of Health)
 [www.nea.gov.sg](https://www.nea.gov.sg) (National Environment Agency)
 
 EMPHASIS — within the section content (not the labels) you may wrap the 1-2 MOST safety-critical phrases in **double asterisks**. Use sparingly.
 
 Other rules:
-- This is a SINGAPORE national health-authority advisory: address Singapore residents/caregivers. Refer to a specific sub-region (e.g. "East Region") only as a detail of WHERE cases or clusters are — never frame the whole advisory as applying only to that sub-region.
-- The "checklist" is a SEPARATE caregiver-facing add-on (practical steps), not part of the official message.
+- This is a SINGAPORE national health-authority advisory addressed to Singapore residents/caregivers. Mention a sub-region (e.g. "East Region") only as a detail of WHERE the cases are — never frame the whole advisory as applying only to that sub-region.
+- The "checklist" field is a SEPARATE caregiver-facing add-on (practical steps), not part of the official message.
 
 Return ONLY JSON: { "title","body","target","urgency","checklist" }
 urgency is "HIGH" or "NORMAL".`,
         },
         {
           role: "user",
-          content: `TOPIC: ${t.topic}\nREGION: ${t.region}\nAUDIENCE: ${t.audience}\n\nOFFICIAL GUIDANCE:\n${advisorySummary}\n\nVERIFIED FINDINGS:\n${JSON.stringify(findings, null, 2)}\n\nCIRCULATING MISINFORMATION:\n${JSON.stringify(claims, null, 2)}`,
+          content: `TOPIC: ${t.topic}\nREGION: ${t.region}\nAUDIENCE: ${t.audience}${hazardBlock}\n\nOFFICIAL GUIDANCE:\n${advisorySummary}\n\nVERIFIED FINDINGS:\n${JSON.stringify(findings, null, 2)}\n\nCIRCULATING MISINFORMATION:\n${JSON.stringify(claims, null, 2)}`,
         },
       ],
     }),

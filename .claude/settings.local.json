@@ -32,7 +32,9 @@
       "Bash(cd \"c:/Users/USER/Desktop/Hackathon/Authority Dashboard\")",
       "Bash(node -e \"console.log\\(require\\('@supabase/supabase-js/package.json'\\).version\\)\")",
       "PowerShell(npx tsc --noEmit 2>&1)",
-      "PowerShell($root = \"C:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\BrainHack CARA\"; Get-ChildItem $root -Directory | Select-Object Name; Write-Host \"---public---\"; if \\(Test-Path \"$root\\\\public\"\\) { Get-ChildItem \"$root\\\\public\" | Select-Object Name })"
+      "PowerShell($root = \"C:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\BrainHack CARA\"; Get-ChildItem $root -Directory | Select-Object Name; Write-Host \"---public---\"; if \\(Test-Path \"$root\\\\public\"\\) { Get-ChildItem \"$root\\\\public\" | Select-Object Name })",
+      "WebFetch(domain:www.tiktok.com)",
+      "WebFetch(domain:mothership.sg)"
     ]
   }
 }

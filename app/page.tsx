@@ -1,10 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useResearch } from "@/lib/useResearch";
 import { ResearchAgent } from "@/components/ResearchAgent";
-import { Assessment } from "@/components/Assessment";
 import { Findings } from "@/components/Findings";
 import { Misinfo } from "@/components/Misinfo";
 import { DraftPanel } from "@/components/DraftPanel";
@@ -14,11 +13,26 @@ import type { TopicInput } from "@/lib/types";
 import { getCovidStats, covidDateBounds, defaultCovidDate } from "@/lib/historicalCovid";
 import type { DengueClusters } from "@/lib/datagovsg";
 import type { Spread } from "@/lib/types";
+import { OFFICIAL_CHANNELS, SOCIAL_CHANNELS } from "@/lib/channels";
 
 export default function Page() {
   const { state, start, stop, loadRun } = useResearch();
   const [topicText, setTopicText] = useState("");
   const [intelTab, setIntelTab] = useState<"findings" | "misinfo">("findings");
+
+  // Per-source selection lives at the page level so the intel tabs and the
+  // broadcast-regenerate trigger share the same state. Default: every channel
+  // selected — user can tick off ones they don't want included.
+  const [selectedOfficial, setSelectedOfficial] = useState<Set<string>>(() => new Set(OFFICIAL_CHANNELS.map((c) => c.id)));
+  const [selectedSocial, setSelectedSocial] = useState<Set<string>>(() => new Set(SOCIAL_CHANNELS.map((c) => c.id)));
+  const toggleOfficial = (id: string) =>
+    setSelectedOfficial((s) => {
+      const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n;
+    });
+  const toggleSocial = (id: string) =>
+    setSelectedSocial((s) => {
+      const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n;
+    });
 
   // If the URL has ?run=<id> (e.g. clicked "Load" from /audit), hydrate that run.
   useEffect(() => {
@@ -52,6 +66,79 @@ export default function Page() {
     fetchGdelt("Dengue").then((d) => { if (!cancelled) setDengueGdelt(d); });
     return () => { cancelled = true; };
   }, [fetchGdelt]);
+  // Recent topics dropdown — COVID-19 + Dengue are always pinned at the top,
+  // followed by any other topic the user has previously researched. Each item
+  // carries the id of its latest run so picking can load past data directly.
+  const [recentTopics, setRecentTopics] = useState<Array<{ topic: string; runId: string | null }>>([]);
+  const fetchRecentTopics = useCallback(async () => {
+    try {
+      const r = await fetch("/api/topics");
+      if (r.ok) setRecentTopics(await r.json());
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => { fetchRecentTopics(); }, [fetchRecentTopics]);
+  // Refresh the list whenever a run completes (a new topic may have just been added).
+  useEffect(() => {
+    if (!state.running) fetchRecentTopics();
+  }, [state.running, fetchRecentTopics]);
+
+  // One handler for every topic-pick surface (both picker dropdowns).
+  // LOAD: hydrate past run instantly. NEW: just fill the input — the user
+  // explicitly triggers a fresh run with the search icon (HazardCard clicks
+  // and dropdown NEW picks no longer auto-run, per the search-only rule).
+  const pickTopic = useCallback((item: { topic: string; runId: string | null }) => {
+    setTopicText(item.topic);
+    if (item.runId) loadRun(item.runId);
+  }, [loadRun]);
+
+  // Authoritative hazard snapshot — derived from what's currently on screen
+  // (calendar date for COVID, live NEA clusters for Dengue, GDELT). This is
+  // passed BOTH at run-start time AND on regenerate so the broadcast Situation
+  // always uses the dashboard's numbers, never the dates scraped from MOH
+  // press releases that may not be for the same period.
+  const hazardSnapshot = useMemo(() => {
+    const norm = topicText.trim().toLowerCase();
+    if (norm === "covid-19" || norm.includes("covid")) {
+      return {
+        cases: covidStats.cases.toLocaleString("en-SG"),
+        casesLabel: "weekly cases",
+        trend: covidStats.trendDir && covidStats.trendPct != null
+          ? `${covidStats.trendDir} ${covidStats.trendPct}%`
+          : undefined,
+        hospitalisations: covidStats.seniorHosp,
+        hospitalisationsLabel: "senior hospitalisations",
+        icu: covidStats.seniorIcu,
+        asOf: covidStats.friendlyDate,
+        source: "MOH",
+        gdelt: covidGdelt?.spread
+          ? {
+              velocity: covidGdelt.spread.singaporeVelocity ?? covidGdelt.spread.velocityLabel,
+              mentions30d: covidGdelt.spread.singaporeArticles,
+            }
+          : undefined,
+      };
+    }
+    if (norm === "dengue" || norm.includes("dengue")) {
+      if (!dengueStats) return null;
+      return {
+        cases: dengueStats.totalClusters,
+        casesLabel: "active clusters",
+        hospitalisations: dengueStats.totalCases,
+        hospitalisationsLabel: "cases islandwide",
+        asOf: "today",
+        source: "NEA",
+        gdelt: dengueGdelt?.spread
+          ? {
+              velocity: dengueGdelt.spread.singaporeVelocity ?? dengueGdelt.spread.velocityLabel,
+              mentions30d: dengueGdelt.spread.singaporeArticles,
+            }
+          : undefined,
+      };
+    }
+    return null;
+  }, [topicText, covidStats, dengueStats, covidGdelt, dengueGdelt]);
+
+
   // COVID GDELT follows the date picker — re-fetch whenever covidDate changes.
   useEffect(() => {
     let cancelled = false;
@@ -103,10 +190,7 @@ export default function Page() {
             subtitle={`${covidStats.seniorHosp} senior hospitalisations · ${covidStats.seniorIcu} ICU`}
             active={topicText.trim().toLowerCase() === "covid-19"}
             disabled={state.running}
-            onClick={() => {
-              setTopicText("COVID-19");
-              if (!state.running) start({ ...topic, topic: "COVID-19" }, "live");
-            }}
+            onClick={() => setTopicText("COVID-19")}
             dateInput={
               <DatePickerTrigger
                 value={covidDate}
@@ -130,10 +214,7 @@ export default function Page() {
             subtitle={dengueStats ? `${dengueStats.totalCases} cases islandwide` : "loading live cluster data…"}
             active={topicText.trim().toLowerCase() === "dengue"}
             disabled={state.running}
-            onClick={() => {
-              setTopicText("Dengue");
-              if (!state.running) start({ ...topic, topic: "Dengue" }, "live");
-            }}
+            onClick={() => setTopicText("Dengue")}
             discussion={dengueGdelt}
             onRefreshDiscussion={async () => {
               const fresh = await fetchGdelt("Dengue", { refresh: true });
@@ -145,11 +226,17 @@ export default function Page() {
 
       {/* ── Topic input + controls ──────────────────────────────────────── */}
       <div className="topic-row" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 22px 16px", flexWrap: "wrap" }}>
+        <TopicPicker
+          current={topicText || "COVID-19"}
+          recent={recentTopics}
+          disabled={state.running}
+          onPick={pickTopic}
+        />
         <input
           className="topic-input"
           value={topicText}
           onChange={(e) => setTopicText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && canRun && !state.running) start(topic, "live"); }}
+          onKeyDown={(e) => { if (e.key === "Enter" && canRun && !state.running) start(topic, "live", hazardSnapshot); }}
           placeholder="…or type a custom topic"
           disabled={state.running}
           style={{ width: 440, maxWidth: "70vw", fontSize: 13.5, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--cara-line)", background: "#fff" }}
@@ -157,7 +244,7 @@ export default function Page() {
         {state.running ? (
           <button onClick={stop} style={btnGhost}>Stop</button>
         ) : (
-          <button onClick={() => start(topic, "live")} disabled={!canRun} aria-label="Run research" style={{ ...iconBtn, opacity: canRun ? 1 : 0.5, cursor: canRun ? "pointer" : "not-allowed" }}>
+          <button onClick={() => start(topic, "live", hazardSnapshot)} disabled={!canRun} aria-label="Run research" style={{ ...iconBtn, opacity: canRun ? 1 : 0.5, cursor: canRun ? "pointer" : "not-allowed" }}>
             <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
               <circle cx="11" cy="11" r="7" />
               <line x1="21" y1="21" x2="16.5" y2="16.5" />
@@ -177,8 +264,6 @@ export default function Page() {
 
       {/* ── Workspace ───────────────────────────────────────────────────── */}
       <main className="workspace" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        {state.assessment && <Assessment assessment={state.assessment} />}
-
         {/* Surveillance grid spans full width */}
         <ResearchAgent
           running={state.running}
@@ -195,16 +280,28 @@ export default function Page() {
         {/* Intel tabs beside the broadcast container */}
         <div className="workspace-grid">
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", gap: 6 }}>
-              <IntelTab active={intelTab === "findings"} onClick={() => setIntelTab("findings")}>
-                Verified Facts{state.findings.length > 0 ? ` · ${state.findings.length}` : ""}
-              </IntelTab>
-              <IntelTab active={intelTab === "misinfo"} onClick={() => setIntelTab("misinfo")}>
-                Misinformation{state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
-              </IntelTab>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <TopicPicker
+                current={topicText || "—"}
+                recent={recentTopics}
+                disabled={state.running}
+                onPick={pickTopic}
+              />
+              <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                <IntelTab active={intelTab === "findings"} onClick={() => setIntelTab("findings")}>
+                  Verified Sources{state.findings.length > 0 ? ` · ${state.findings.length}` : ""}
+                </IntelTab>
+                <IntelTab active={intelTab === "misinfo"} onClick={() => setIntelTab("misinfo")}>
+                  Online Sources{state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
+                </IntelTab>
+              </div>
             </div>
             <section style={{ background: "var(--cara-panel)", border: "1px solid var(--cara-line)", borderRadius: 14, overflow: "hidden" }}>
-              {intelTab === "findings" ? <Findings findings={state.findings} /> : <Misinfo claims={state.claims} spread={state.spread} />}
+              {intelTab === "findings" ? (
+                <Findings findings={state.findings} selected={selectedOfficial} onToggle={toggleOfficial} />
+              ) : (
+                <Misinfo claims={state.claims} spread={state.spread} selected={selectedSocial} onToggle={toggleSocial} />
+              )}
             </section>
           </div>
 
@@ -213,6 +310,9 @@ export default function Page() {
             runId={state.runId}
             findings={state.findings}
             claims={state.claims}
+            selectedOfficial={selectedOfficial}
+            selectedSocial={selectedSocial}
+            hazardSnapshot={hazardSnapshot}
             onRefresh={() => (state.runId ? loadRun(state.runId) : Promise.resolve())}
           />
         </div>
@@ -224,6 +324,161 @@ export default function Page() {
 const btnPrimary: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--cara-blue)", border: 0, padding: "8px 16px", borderRadius: 8, cursor: "pointer" };
 const iconBtn: React.CSSProperties = { display: "grid", placeItems: "center", width: 38, height: 38, background: "#002C77", border: 0, borderRadius: 8 };
 const btnGhost: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "var(--cara-navy)", background: "#fff", border: "1.5px solid var(--cara-navy)", padding: "8px 14px", borderRadius: 8, cursor: "pointer" };
+
+const PINNED_TOPICS = ["COVID-19", "Dengue"];
+
+interface RecentTopicItem {
+  topic: string;
+  runId: string | null;
+}
+
+function TopicPicker({
+  current,
+  recent,
+  disabled,
+  onPick,
+}: {
+  current: string;
+  recent: RecentTopicItem[];
+  disabled: boolean;
+  onPick: (item: RecentTopicItem) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  // Map past runs by lowercased topic so pinned items can pick up history too.
+  const norm = (s: string) => s.trim().toLowerCase();
+  const recentByTopic = new Map(recent.map((r) => [norm(r.topic), r]));
+  // Pinned: if there's a past run for COVID-19 / Dengue, use its runId; otherwise null.
+  const pinnedItems: RecentTopicItem[] = PINNED_TOPICS.map((t) => ({
+    topic: t,
+    runId: recentByTopic.get(norm(t))?.runId ?? null,
+  }));
+  const pinnedSet = new Set(PINNED_TOPICS.map(norm));
+  const others = recent.filter((r) => !pinnedSet.has(norm(r.topic)));
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        disabled={disabled}
+        title="Pick a topic — past runs load instantly, new topics start a fresh run"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          fontSize: 12.5, fontWeight: 700, fontFamily: "inherit",
+          padding: "7px 11px", borderRadius: 8,
+          border: "1px solid var(--cara-line)", background: "#fff",
+          color: "var(--cara-ink)",
+          cursor: disabled ? "not-allowed" : "pointer",
+          opacity: disabled ? 0.5 : 1,
+          maxWidth: 260,
+        }}
+      >
+        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--cara-muted)", letterSpacing: 0.4 }}>TOPIC:</span>
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {current || "Pick one"}
+        </span>
+        <span style={{ fontSize: 9, opacity: 0.6, transition: "transform .15s", display: "inline-block", transform: open ? "rotate(180deg)" : "rotate(0)" }}>▼</span>
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          style={{
+            position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
+            minWidth: 260, maxHeight: 360, overflowY: "auto",
+            background: "#fff", border: "1px solid var(--cara-line)", borderRadius: 10,
+            boxShadow: "0 12px 32px -12px rgba(15,39,71,0.25)",
+            padding: 4, margin: 0, listStyle: "none",
+          }}
+        >
+          <li style={topicSectionLabel}>Pinned</li>
+          {pinnedItems.map((it) => (
+            <TopicItem
+              key={it.topic}
+              item={it}
+              pinned
+              isCurrent={norm(it.topic) === norm(current)}
+              onClick={() => { setOpen(false); onPick(it); }}
+            />
+          ))}
+          {others.length > 0 && <li style={topicSectionLabel}>Previously searched</li>}
+          {others.map((it) => (
+            <TopicItem
+              key={it.topic}
+              item={it}
+              isCurrent={norm(it.topic) === norm(current)}
+              onClick={() => { setOpen(false); onPick(it); }}
+            />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TopicItem({
+  item,
+  pinned,
+  isCurrent,
+  onClick,
+}: {
+  item: RecentTopicItem;
+  pinned?: boolean;
+  isCurrent: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <li>
+      <button
+        role="option"
+        aria-selected={isCurrent}
+        onClick={onClick}
+        style={{
+          display: "flex", alignItems: "center", gap: 8,
+          width: "100%", textAlign: "left",
+          fontSize: 13, fontWeight: 600, fontFamily: "inherit",
+          padding: "8px 10px", borderRadius: 6,
+          border: 0, background: isCurrent ? "#eef2f7" : "transparent",
+          color: "var(--cara-ink)", cursor: "pointer",
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#eef2f7"; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isCurrent ? "#eef2f7" : "transparent"; }}
+      >
+        {pinned && <span style={{ fontSize: 11, color: "var(--cara-muted)" }}>★</span>}
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.topic}</span>
+        <span style={{
+          fontSize: 9, fontWeight: 800, letterSpacing: 0.4,
+          padding: "2px 6px", borderRadius: 4,
+          color: item.runId ? "#002C77" : "var(--cara-muted)",
+          background: item.runId ? "#dbeafe" : "#f1f5f9",
+        }}>
+          {item.runId ? "LOAD" : "NEW"}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+const topicSectionLabel: React.CSSProperties = {
+  fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: "var(--cara-muted)",
+  textTransform: "uppercase", padding: "8px 10px 4px",
+};
 
 function GdeltCard({
   topic,

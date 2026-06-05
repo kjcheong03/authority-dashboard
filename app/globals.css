@@ -39,7 +39,9 @@ body {
 }
 .workspace-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  /* Sources column thinner; Broadcast column wider so the draft editor has room
+     to breathe. */
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
   gap: 16px;
   align-items: start;
 }

@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Draft, Finding, Claim } from "@/lib/types";
-import { SourcePickerModal } from "./SourcePickerModal";
 
 // ── Markdown ⇄ HTML for the rich body editor ──────────────────────────────
 // Body text is stored as plain text with **bold** markers (same convention the
@@ -56,17 +55,35 @@ const FONT = "var(--font-rounded), ui-sans-serif, system-ui, sans-serif";
 // One consistent "selected" colour across all radios & chips — dark grey, bold.
 const SELECTED = "#334155";
 
+export interface DraftPanelHazardSnapshot {
+  cases?: string | number;
+  casesLabel?: string;
+  trend?: string;
+  hospitalisations?: string | number;
+  hospitalisationsLabel?: string;
+  icu?: string | number;
+  asOf?: string;
+  source?: string;
+  gdelt?: { mentions30d?: string | number; velocity?: string };
+}
+
 export function DraftPanel({
   draft,
   runId,
   findings,
   claims,
+  selectedOfficial,
+  selectedSocial,
+  hazardSnapshot,
   onRefresh,
 }: {
   draft: Draft | null;
   runId: string | null;
   findings: Finding[];
   claims: Claim[];
+  selectedOfficial: Set<string>;
+  selectedSocial: Set<string>;
+  hazardSnapshot?: DraftPanelHazardSnapshot | null;
   onRefresh?: () => Promise<void> | void;
 }) {
   const [headline, setHeadline] = useState("");
@@ -76,8 +93,8 @@ export function DraftPanel({
   const [profiles, setProfiles] = useState<string[]>([]);
   const [broadcast, setBroadcast] = useState(false);
   const [sending, setSending] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -85,13 +102,31 @@ export function DraftPanel({
       setHeadline(draft.title);
       setBody(draft.body);
       setUrgent(draft.urgency === "HIGH");
-      setAudienceMode("all");
-      setProfiles([]);
       setBroadcast(false);
       setConfirmation(null);
       if (editorRef.current) editorRef.current.innerHTML = mdToHtml(draft.body);
     }
   }, [draft]);
+
+  const handleRegenerate = async () => {
+    if (!runId || regenerating) return;
+    setRegenerating(true);
+    try {
+      await fetch("/api/draft/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          runId,
+          officialChannels: [...selectedOfficial],
+          socialChannels: [...selectedSocial],
+          hazardSnapshot: hazardSnapshot ?? undefined,
+        }),
+      });
+      if (onRefresh) await onRefresh();
+    } finally {
+      setRegenerating(false);
+    }
+  };
 
   const handleBroadcast = async () => {
     if (!runId || sending) return;
@@ -148,22 +183,22 @@ export function DraftPanel({
       <header style={{ display: "flex", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid var(--cara-line)" }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>Broadcast</h2>
         <button
-          onClick={() => setPickerOpen(true)}
-          disabled={!runId || (findings.length === 0 && claims.length === 0)}
-          title="Pick sources for broadcast"
-          aria-label="Pick sources for broadcast"
+          onClick={handleRegenerate}
+          disabled={!runId || regenerating || (findings.length === 0 && claims.length === 0)}
+          title="Regenerate draft from currently selected sources"
+          aria-label="Regenerate draft from selected sources"
           style={{
             display: "grid", placeItems: "center",
             width: 30, height: 30, borderRadius: 8,
             border: "1px solid var(--cara-line)", background: "#fff",
-            color: "var(--cara-ink)", cursor: "pointer",
-            opacity: !runId || (findings.length === 0 && claims.length === 0) ? 0.4 : 1,
+            color: "var(--cara-ink)", cursor: regenerating ? "default" : "pointer",
+            opacity: !runId || regenerating || (findings.length === 0 && claims.length === 0) ? 0.45 : 1,
           }}
         >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="16" rx="2" />
-            <line x1="3" y1="9" x2="21" y2="9" />
-            <line x1="9" y1="4" x2="9" y2="20" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: regenerating ? "spin .8s linear infinite" : undefined }} aria-hidden="true">
+            <polyline points="23 4 23 10 17 10" />
+            <polyline points="1 20 1 14 7 14" />
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
           </svg>
         </button>
       </header>
@@ -285,14 +320,6 @@ export function DraftPanel({
           </div>
         )}
 
-        <SourcePickerModal
-          open={pickerOpen}
-          runId={runId}
-          findings={findings}
-          claims={claims}
-          onClose={() => setPickerOpen(false)}
-          onApplied={async () => { if (onRefresh) await onRefresh(); }}
-        />
       </div>
     </section>
   );

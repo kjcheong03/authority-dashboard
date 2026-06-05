@@ -248,6 +248,44 @@ CREATE TRIGGER trg_drafts_bump_updated_at
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Per-finding / per-claim TinyFish provenance (idempotent).
+-- Each finding/claim was produced by a specific TinyFish session, and that
+-- session has a step ID whose screenshot + HTML snapshot we use as evidence.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE findings ADD COLUMN IF NOT EXISTS tinyfish_run_id  TEXT;
+ALTER TABLE findings ADD COLUMN IF NOT EXISTS tinyfish_step_id TEXT;
+ALTER TABLE claims   ADD COLUMN IF NOT EXISTS tinyfish_run_id  TEXT;
+ALTER TABLE claims   ADD COLUMN IF NOT EXISTS tinyfish_step_id TEXT;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- channel_sessions ─ one row per (research run × TinyFish channel). Captures
+-- the per-source session metadata that findings/claims point at: the TinyFish
+-- run_id, the last meaningful step (drives the snapshot button), the start URL,
+-- the goal, plus the session's lifecycle status. Lets the audit page show
+-- exactly which page each source landed on without joining through every row.
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS channel_sessions (
+  run_id            UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
+  channel_id        TEXT NOT NULL,                       -- "moh", "reddit", …
+  lane              TEXT NOT NULL                        -- "verified" | "online"
+                      CHECK (lane IN ('verified', 'online')),
+  tinyfish_run_id   TEXT,                                -- the upstream session id
+  last_step_id      TEXT,                                -- drives snapshot proxy
+  start_url         TEXT,
+  goal              TEXT,
+  status            TEXT NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending', 'ok', 'failed', 'cancelled')),
+  item_count        INT NOT NULL DEFAULT 0,              -- findings or claims produced
+  started_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at      TIMESTAMPTZ,
+  PRIMARY KEY (run_id, channel_id)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_sessions_run ON channel_sessions (run_id);
+CREATE INDEX IF NOT EXISTS idx_channel_sessions_tf  ON channel_sessions (tinyfish_run_id);
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- hazard_gdelt ─ pre-cached GDELT signal per topic (COVID-19, Dengue, etc.).
 -- Page-load reads from here so the top GDELT cards render instantly. A refresh
 -- button on each card forces a fresh BigQuery call and upserts back.
@@ -281,4 +319,5 @@ ALTER TABLE broadcasts        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sources           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE run_logs          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE hazard_gdelt      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE channel_sessions  ENABLE ROW LEVEL SECURITY;
 -- (No policies defined → only service_role key can read/write.)

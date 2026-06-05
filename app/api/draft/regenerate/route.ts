@@ -9,7 +9,7 @@
  * ─────────────────────────────────────────────────────────────────────────── */
 
 import { db, loadRun, saveDraft, saveLog, updateRun } from "@/lib/db";
-import { generateDraft } from "@/lib/agents";
+import { generateDraft, type HazardSnapshot } from "@/lib/agents";
 import { channelForAgency, channelForWhere } from "@/lib/channels";
 import type { Finding, Claim, TopicInput } from "@/lib/types";
 
@@ -20,6 +20,7 @@ interface PostBody {
   runId: string;
   officialChannels: string[];
   socialChannels: string[];
+  hazardSnapshot?: HazardSnapshot;
 }
 
 export async function POST(req: Request) {
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
         fix: c.fix,
         velocity: c.velocity,
       })),
+      body.hazardSnapshot ?? null,
     );
     // Keep urgency consistent with the original assessment if there is one.
     if (hydrated.assessment) draft.urgency = hydrated.assessment.urgency;

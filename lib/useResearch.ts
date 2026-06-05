@@ -93,7 +93,7 @@ export function useResearch() {
   }, []);
 
   const start = useCallback(
-    async (input: TopicInput, mode: "live" | "replay") => {
+    async (input: TopicInput, mode: "live" | "replay", hazardSnapshot?: unknown) => {
       abortRef.current?.abort();
       const ac = new AbortController();
       abortRef.current = ac;
@@ -103,7 +103,7 @@ export function useResearch() {
         const res = await fetch("/api/research", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...input, mode }),
+          body: JSON.stringify({ ...input, mode, hazardSnapshot }),
           signal: ac.signal,
         });
         if (!res.ok || !res.body) throw new Error(`Request failed: ${res.status}`);

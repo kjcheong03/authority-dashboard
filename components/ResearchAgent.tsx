@@ -1,8 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
-import { revealSoft } from "@/lib/motion";
-import type { SourceRef, Phase, Finding, Claim, Spread } from "@/lib/types";
+import type { Phase, Finding, Claim, Spread, SourceRef } from "@/lib/types";
 import { SurveillanceGrid } from "./SurveillanceGrid";
 
 export function ResearchAgent({
@@ -45,18 +43,6 @@ export function ResearchAgent({
         )}
       </div>
 
-      {/* source chips — only once consulted */}
-      {sources.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          <AnimatePresence>
-            {sources.map((s) => (
-              <motion.a key={s.name} layout {...revealSoft} href={s.url} target="_blank" rel="noreferrer" style={chip}>
-                {s.name}
-              </motion.a>
-            ))}
-          </AnimatePresence>
-        </div>
-      )}
     </section>
   );
 }
@@ -70,13 +56,3 @@ const surveillancePanel: React.CSSProperties = {
   padding: "14px 14px 12px",
 };
 
-const chip: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  padding: "4px 10px",
-  borderRadius: 999,
-  background: "#eaf3f1",
-  color: "var(--cara-navy)",
-  textDecoration: "none",
-  border: "1px solid var(--cara-line)",
-};

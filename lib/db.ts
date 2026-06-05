@@ -106,6 +106,8 @@ export async function saveFinding(runId: string | null, f: Finding, ordinal: num
     text: f.text,
     url: f.url ?? null,
     time_ago: f.timeAgo ?? null,
+    tinyfish_run_id: f.tinyfishRunId ?? null,
+    tinyfish_step_id: f.tinyfishStepId ?? null,
     ordinal,
   }));
 }
@@ -126,6 +128,8 @@ export async function saveClaim(runId: string | null, c: Claim, ordinal: number)
     analysis: c.analysis ?? null,
     fix: c.fix ?? null,
     velocity: c.velocity ?? null,
+    tinyfish_run_id: c.tinyfishRunId ?? null,
+    tinyfish_step_id: c.tinyfishStepId ?? null,
     ordinal,
   }).select("id").single());
   return res?.data?.id ?? null;
@@ -226,6 +230,41 @@ export async function saveLog(runId: string | null, level: "info" | "warn" | "ok
   await safe(sb.from("run_logs").insert({ run_id: runId, level, message, ts: ts ? new Date().toISOString() : new Date().toISOString() }));
 }
 
+/**
+ * Persist per-channel TinyFish session metadata. One row per (run × channel).
+ * Upserts so the row can be created at session start and completed at finish.
+ */
+export interface ChannelSessionRecord {
+  runId: string | null;
+  channelId: string;
+  lane: "verified" | "online";
+  tinyfishRunId?: string | null;
+  lastStepId?: string | null;
+  startUrl?: string | null;
+  goal?: string | null;
+  status: "pending" | "ok" | "failed" | "cancelled";
+  itemCount?: number;
+  completedAt?: string | null;
+}
+
+export async function saveChannelSession(rec: ChannelSessionRecord) {
+  if (!rec.runId) return;
+  const sb = db();
+  if (!sb) return;
+  await safe(sb.from("channel_sessions").upsert({
+    run_id:          rec.runId,
+    channel_id:      rec.channelId,
+    lane:            rec.lane,
+    tinyfish_run_id: rec.tinyfishRunId ?? null,
+    last_step_id:    rec.lastStepId ?? null,
+    start_url:       rec.startUrl ?? null,
+    goal:            rec.goal ?? null,
+    status:          rec.status,
+    item_count:      rec.itemCount ?? 0,
+    completed_at:    rec.completedAt ?? null,
+  }, { onConflict: "run_id,channel_id" }));
+}
+
 /* ─── Hydration: load a saved run for autofill ────────────────────────────── */
 
 export interface HydratedRun {
@@ -304,6 +343,8 @@ export async function loadRun(runId: string): Promise<HydratedRun | null> {
     velocity: c.velocity ?? undefined,
     origin: originsByClaim.get(c.id),
     factChecks: fcByClaim.get(c.id),
+    tinyfishRunId: c.tinyfish_run_id ?? undefined,
+    tinyfishStepId: c.tinyfish_step_id ?? undefined,
   }));
 
   const findings: Finding[] = (findingsRes.data ?? []).map((f) => ({
@@ -312,6 +353,8 @@ export async function loadRun(runId: string): Promise<HydratedRun | null> {
     text: f.text,
     url: f.url ?? undefined,
     timeAgo: f.time_ago ?? undefined,
+    tinyfishRunId: f.tinyfish_run_id ?? undefined,
+    tinyfishStepId: f.tinyfish_step_id ?? undefined,
   }));
 
   const sp = spreadRes.data;
@@ -378,6 +421,38 @@ export interface RunListItem {
   created_at: string;
   completed_at: string | null;
   verdict: string | null;
+}
+
+/**
+ * Unique recent topics across all runs, paired with the id of their most-recent
+ * completed run so the picker can hydrate the dashboard with that run's data
+ * instead of re-running the pipeline.
+ */
+export interface RecentTopic {
+  topic: string;
+  runId: string | null; // null when no past run yet (pinned topics)
+}
+
+export async function listRecentTopics(limit = 20): Promise<RecentTopic[]> {
+  const sb = db();
+  if (!sb) return [];
+  const { data } = await sb
+    .from("runs")
+    .select("id, topic, status, created_at")
+    .order("created_at", { ascending: false })
+    .limit(80);
+  const seen = new Set<string>();
+  const out: RecentTopic[] = [];
+  for (const r of (data ?? []) as Array<{ id: string; topic: string; status: string }>) {
+    const key = r.topic.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    // Only completed runs are LOAD-able (have a full pipeline of data). Stopped
+    // and failed runs surface as NEW so the picker triggers a fresh attempt.
+    out.push({ topic: r.topic.trim(), runId: r.status === "complete" ? r.id : null });
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 export async function listRecentRuns(limit = 12): Promise<RunListItem[]> {

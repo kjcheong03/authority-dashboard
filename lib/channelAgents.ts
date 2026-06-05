@@ -162,41 +162,231 @@ export const VERIFIED_AGENTS: Record<string, ChannelAgentConfig> = {
 };
 
 // ── Online-lane channels ──────────────────────────────────────────────────
+//
+// Strategy across all 7: target HIGH-ENGAGEMENT content (top views / likes /
+// followers / replies) so what the agent captures is what's actually
+// circulating with citizens — not low-signal noise. Avoid login walls by
+// routing through public previews or DuckDuckGo's site: operator.
 
 export const ONLINE_AGENTS: Record<string, ChannelAgentConfig> = {
+  /* Reddit — top-voted posts in r/singapore for the topic, last year.
+     old.reddit.com renders fully server-side so it's reliable to scrape and
+     `sort=top&t=year` surfaces the highest-engagement threads.            */
   reddit: {
-    startUrl: (t) => `https://www.reddit.com/r/singapore/search/?q=${encodeURIComponent(t)}&restrict_sr=on`,
-    goal: (t) => onlineGoal("r/singapore", "the r/singapore search results page", t),
+    startUrl: (t) =>
+      `https://old.reddit.com/r/singapore/search?q=${encodeURIComponent(t)}&restrict_sr=on&sort=top&t=year&include_over_18=on`,
+    goal: (t) => `You are CARA scanning r/singapore — Singapore's largest public Reddit community — for misinformation about "${t}".
+
+You are on the r/singapore SEARCH RESULTS PAGE, sorted by TOP votes over the last year. The highest-engagement (most upvoted, most commented) posts are at the top.
+
+Process:
+1. Read the top 5–8 posts visible. For each: capture the post TITLE verbatim, and skim any visible self-text or top comments shown on the listing.
+2. Treat as a CLAIM anything that asserts a fact, cure, rumour, distortion of official guidance, or "I heard that…" speculation related to "${t}". Skip pure questions ("can someone explain…").
+3. Click into the single highest-upvoted thread if titles aren't enough to capture claims. Read its top 1–2 comments.
+4. Note the upvote count for each captured claim — that's the engagement signal.
+
+Budget: spend at most 60 seconds. Even 1–2 high-engagement claims is more valuable than 10 low-signal ones.
+
+Tag EVERY claim with where: "Reddit".
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the claim close to verbatim from the post title or top comment", "where": "Reddit", "shares": "upvote count e.g. '847 upvotes' or 'XYZ comments'" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* HardwareZone — Singapore's biggest mainstream forum (Eat-Drink-Man-Woman
+     section is famous for citizen rumours). Search results, sort by replies
+     so the most-discussed threads bubble up.                              */
   hwz: {
-    startUrl: (t) => `https://forums.hardwarezone.com.sg/search/${encodeURIComponent(t)}/`,
-    goal: (t) => onlineGoal("HardwareZone", "HardwareZone forum search results", t),
+    startUrl: (t) =>
+      `https://forums.hardwarezone.com.sg/search/?q=${encodeURIComponent(t)}&o=replies`,
+    goal: (t) => `You are CARA scanning HardwareZone (forums.hardwarezone.com.sg) — Singapore's largest mainstream discussion forum — for misinformation about "${t}".
+
+You are on the HWZ search results page, ordered by REPLY COUNT so the most-discussed threads are first. The "Eat-Drink-Man-Woman" and "Current Affairs" sections in particular are known for citizen rumours.
+
+Process:
+1. Look at the top 5 search result threads — these have the highest reply counts.
+2. Read the visible thread TITLES and any snippet shown. Capture any claim about "${t}" — fake cures, rumours, distortions, panic.
+3. If titles are vague, click into the top thread and read the opening post + first highly-upvoted reply.
+4. Note reply counts and views as the engagement signal.
+
+Budget: spend at most 60 seconds.
+
+Tag EVERY claim with where: "HardwareZone".
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the claim close to verbatim", "where": "HardwareZone", "shares": "reply count or view count e.g. '128 replies · 4.2K views'" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* Mothership — tag page (e.g. /tag/covid-19/). This is the curated landing
+     page for each topic on Singapore's most-shared news site; lists articles
+     by recency, no search box needed. Falls through to nothing-found message
+     if the tag doesn't exist for the given topic.                          */
   mothership: {
-    startUrl: (t) => `https://mothership.sg/?s=${encodeURIComponent(t)}`,
-    goal: (t) => onlineGoal("Mothership comments", "the Mothership SG search page (look at comment threads on relevant articles)", t),
+    startUrl: (t) =>
+      `https://mothership.sg/tag/${t.toLowerCase().trim().replace(/[\s]+/g, "-")}/`,
+    goal: (t) => `You are on Mothership SG's tag page for "${t}" (mothership.sg/tag/${t.toLowerCase().replace(/\s+/g, "-")}/). Mothership is one of Singapore's most-shared news outlets — this page lists every article they've published on the topic, newest first.
+
+DO NOT click into any article or navigate away. Stay on this tag page.
+
+Read the 5–8 article cards visible (scroll if needed). Each card shows the article HEADLINE and a short preview snippet.
+
+For EACH article card, capture:
+- "text": the headline verbatim, and append the preview snippet if it adds claim content (separate with " — ")
+- "shares": article date if visible (e.g. "23 Nov 2024"), otherwise leave blank
+
+Capture EVERY relevant card — don't pre-filter for misinformation. The downstream classifier decides which are problematic.
+
+If the page is empty or shows "tag not found", return 2 entries that describe this gracefully (e.g. text: "No Mothership coverage found for '${t}'").
+
+Budget: 45 seconds max. Return JSON immediately when you have 4+ entries.
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "headline — preview snippet", "where": "Mothership", "shares": "article date" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* Telegram — crawl public Singapore Telegram channels/groups via Google's
+     index (DuckDuckGo's site: operator). One DDG page lists messages from
+     multiple SG channels mentioning the topic — that's the "crawl across
+     groups" pattern.                                                       */
   telegram: {
-    startUrl: () => "https://t.me/s/mothership_sg",
-    goal: (t) => onlineGoal("Telegram (public channels)", "a public Telegram channel preview (t.me/s/...)", t),
+    startUrl: (t) =>
+      `https://duckduckgo.com/?q=site%3At.me+${encodeURIComponent(t)}+singapore`,
+    goal: (t) => `You are on a DuckDuckGo search results page that lists posts from PUBLIC Singapore Telegram channels and groups mentioning "${t}". The query is "site:t.me ${t} singapore" — each result links to a public Telegram channel post (t.me/<channel>/<id>).
+
+DO NOT click into any result. Stay on this DDG search page.
+
+Read the top 6–10 search result cards. Each card shows: the Telegram channel/group title, the t.me URL (revealing the channel handle), and a snippet of the actual message body.
+
+For EACH result whose URL is a Singapore community Telegram channel/group (handles often contain "sg", "singapore", or are known SG names like sgwhispers, SGcommunity, SGAG, sgcoffeeshop, MustShareNewsSG, straits_times) and mentions "${t}", capture:
+- "text": the message snippet verbatim
+- "shares": channel handle from the URL (e.g. "@sgwhispers", "@SGcommunity")
+
+Capture EVERY relevant result — don't pre-filter for misinformation. The downstream classifier decides.
+
+If you find nothing topic-relevant, return at least 3 entries from the most prominent SG-channel results visible.
+
+Budget: 45 seconds max. Return JSON immediately when you have 4+ entries.
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the message snippet verbatim from a SG Telegram channel", "where": "Telegram", "shares": "channel handle e.g. '@sgwhispers'" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* TikTok — tiktok.com search WORKS without login when a cache-bust `t=`
+     timestamp param is included. The URL lands on the "Top" tab which shows
+     a grid of video cards (title + thumbnail + like count). Bypasses the
+     login modal that triggers for bare /search?q=… URLs.                   */
   tiktok: {
-    startUrl: (t) => `https://www.tiktok.com/search?q=${encodeURIComponent(t)}+singapore`,
-    goal: (t) => onlineGoal("TikTok", "TikTok search results", t),
+    startUrl: (t) =>
+      `https://www.tiktok.com/search?q=${encodeURIComponent(t)}&t=${Date.now()}`,
+    goal: (t) => `You are on the TikTok search results page for "${t}" — specifically the "Top" tab, which is already selected. The cache-bust timestamp in the URL bypasses the login wall. You will see a grid of TikTok video cards.
+
+CRITICAL RULES (read carefully):
+- DO NOT click any tab in the header bar — not "Top", not "Users", not "Videos", not "LIVE", not "Photo". The "Top" tab is already the right place and shows video content.
+- DO NOT click on any individual video, account, or "Log in" button.
+- DO NOT close the page or open a user profile.
+- If a "Log in" modal pops up, dismiss it with its X button only — DO NOT click "Continue with email" or any login option.
+
+WHAT YOU SEE:
+The "Top" tab shows a grid of video card thumbnails. Each card has:
+- A thumbnail image
+- A video TITLE or CAPTION (often with hashtags like "#covid #2020")
+- A like count (e.g. "158.7K", "8348", "2357")
+- An uploader handle near the bottom (e.g. "amelias_lyfee", "meddecode")
+
+WHAT TO DO:
+Read the top 8–12 video cards visible on this page. For EACH card, capture an entry:
+- "text": the video title/caption verbatim (keep hashtags, emojis, anything visible)
+- "shares": the like count + uploader handle (e.g. "158.7K likes · vano_6787")
+
+Capture EVERY card you can see — don't pre-filter for "misinformation". The downstream classifier decides which are problematic.
+
+If the page renders without any video cards (unlikely — should not happen with this URL), return 2 entries saying "TikTok search page loaded but no cards visible for '${t}'".
+
+Budget: 45 seconds max. Return JSON as soon as you have 5+ entries.
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the video title/caption verbatim", "where": "TikTok", "shares": "likes · uploader" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* Facebook — single-page DDG search with facebook in the query (no site:
+     operator since DDG sometimes blocks that). Just read the results page. */
   facebook: {
-    startUrl: (t) => `https://www.facebook.com/search/posts?q=${encodeURIComponent(t)}+singapore`,
-    goal: (t) => onlineGoal("Facebook (public posts)", "Facebook public post search", t),
+    startUrl: (t) =>
+      `https://duckduckgo.com/?q=${encodeURIComponent(t)}+singapore+facebook+post`,
+    goal: (t) => `You are on a DuckDuckGo search results page for "${t} singapore facebook post". The results are public Facebook posts, pages, and groups Google has indexed.
+
+DO NOT click into any result. Stay on this DDG search page.
+
+Read the 5–10 search result cards visible. Each card shows a title (often a Facebook page or post title) and a snippet of text.
+
+For EACH result mentioning "${t}", capture:
+- "text": the snippet verbatim (the cached preview text)
+- "shares": page name + follower count if visible (e.g. "Mothership · 2.3M followers")
+
+Capture EVERY relevant card — don't pre-filter for misinformation. The downstream classifier decides.
+
+If you find nothing about "${t}", return at least 3 entries from the most-prominent visible Facebook-related results.
+
+Budget: 45 seconds max. Return JSON immediately when you have 3+ entries.
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the snippet verbatim", "where": "Facebook", "shares": "page name + follower count if visible" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
+
+  /* DuckDuckGo — open web search with explicit misinformation operators.
+     Catches misinfo outside the named platforms above (blogs, smaller forums,
+     mainland-media reposts).                                              */
   ddg: {
-    startUrl: (t) => `https://duckduckgo.com/?q=${encodeURIComponent(t)}+singapore+rumour+OR+myth+OR+fake`,
-    goal: (t) => onlineGoal("DuckDuckGo", "a DuckDuckGo web-search results page", t),
+    startUrl: (t) =>
+      `https://duckduckgo.com/?q=${encodeURIComponent(t)}+singapore+(rumour+OR+myth+OR+fake+OR+hoax+OR+%22fact+check%22)`,
+    goal: (t) => `You are CARA on a DuckDuckGo open-web search for misinformation about "${t}" in Singapore. The query includes "rumour OR myth OR fake OR hoax" so the results bias toward claims being debunked or circulating.
+
+Process:
+1. Scan the top 8–10 web results. The most-linked / highest-domain-authority results sit at the top.
+2. Capture each DISTINCT claim mentioned in the result snippets — fake cures, conspiracy framings, lockdown rumours, viral hoaxes.
+3. The result snippet is usually enough — no need to click through unless a result clearly contains a claim but no snippet text.
+4. Use the result URL as the source if useful.
+
+Budget: spend at most 60 seconds.
+
+Tag EVERY claim with where: "DuckDuckGo".
+
+Return ONLY JSON:
+{
+  "claims": [
+    { "text": "the claim verbatim from a result snippet", "where": "DuckDuckGo", "shares": "result rank if relevant e.g. '#1 result' or domain reputation" }
+  ]
+}`,
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
 };

@@ -150,6 +150,7 @@ export function SurveillanceGrid({
               findings={findings}
               spread={spread}
               claims={claims}
+              channelStreamingUrls={channelStreamingUrls}
             />
           </motion.div>
         </AnimatePresence>
@@ -337,6 +338,7 @@ function Lane({
   findings,
   spread,
   claims,
+  channelStreamingUrls,
 }: {
   channels: Channel[];
   statuses: Record<string, Status>;
@@ -345,6 +347,7 @@ function Lane({
   findings: Finding[];
   spread: Spread | null;
   claims: Claim[];
+  channelStreamingUrls?: Record<string, string>;
 }) {
   return (
     <div style={{ display: "grid", gridTemplateColumns: `repeat(${channels.length}, minmax(0, 1fr))`, gap: 6 }}>
@@ -358,6 +361,7 @@ function Lane({
           findings={findings}
           spread={spread}
           claims={claims}
+          streamingUrl={channelStreamingUrls?.[ch.id]}
         />
       ))}
     </div>
@@ -373,6 +377,7 @@ function Tile({
   findings,
   spread,
   claims,
+  streamingUrl,
 }: {
   channel: Channel;
   status: Status;
@@ -381,6 +386,7 @@ function Tile({
   findings: Finding[];
   spread: Spread | null;
   claims: Claim[];
+  streamingUrl?: string;
 }) {
   const border =
     status === "live"
@@ -414,7 +420,7 @@ function Tile({
       }}
     >
       <Header channel={channel} status={status} />
-      <Body channel={channel} status={status} findings={findings} spread={spread} claims={claims} />
+      <Body channel={channel} status={status} findings={findings} spread={spread} claims={claims} streamingUrl={streamingUrl} />
     </button>
   );
 }
@@ -489,21 +495,49 @@ function Body({
   findings,
   spread,
   claims,
+  streamingUrl,
 }: {
   channel: Channel;
   status: Status;
   findings: Finding[];
   spread: Spread | null;
   claims: Claim[];
+  streamingUrl?: string;
 }) {
+  // Browser tile, live, has a per-channel stream URL → render a mini iframe so
+  // every tile shows its own TinyFish session, not a generic "scanning…".
+  const showIframe = channel.type === "browser" && status === "live" && !!streamingUrl;
   return (
-    <div style={{ aspectRatio: "16 / 9", overflow: "hidden", background: "#f1f5f9" }}>
+    <div style={{ aspectRatio: "16 / 9", overflow: "hidden", background: "#f1f5f9", position: "relative" }}>
       {channel.type === "data" ? (
         <div style={{ height: "100%", padding: "6px 8px" }}>
           {channel.id === "gdelt" && <GdeltBody spread={spread} status={status} />}
           {channel.id === "datagovsg" && <DataGovBody findings={findings} status={status} />}
         </div>
+      ) : showIframe ? (
+        <>
+          <iframe
+            src={streamingUrl}
+            title={channel.name}
+            style={{
+              width: "100%", height: "100%",
+              border: 0, background: "#06121f",
+              pointerEvents: "none", // tile click should focus, not interact with iframe
+            }}
+            sandbox="allow-scripts allow-same-origin"
+          />
+          {/* tiny LIVE chip overlay so the tile reads as "active stream" */}
+          <span style={{
+            position: "absolute", top: 4, right: 4,
+            fontSize: 8, fontWeight: 800, letterSpacing: 0.4,
+            padding: "2px 5px", borderRadius: 3,
+            background: "rgba(220,38,38,0.92)", color: "#fff",
+            textShadow: "0 1px 0 rgba(0,0,0,0.2)",
+          }}>LIVE</span>
+        </>
       ) : status === "live" ? (
+        // Live but the STREAMING_URL event hasn't landed yet — keep the scanner
+        // visible until the iframe URL is ready.
         <ScanningBody />
       ) : status === "done" ? (
         <DoneBody channel={channel} findings={findings} claims={claims} />
