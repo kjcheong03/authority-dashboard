@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listRecentRuns, listBroadcasts } from "@/lib/db";
 import Mascot from "@/components/Mascot";
+import { DeleteBroadcastButton } from "@/components/DeleteBroadcastButton";
 
 export const runtime = "nodejs";
 export const revalidate = 0; // always fresh — this is an audit trail
@@ -103,6 +104,7 @@ export default async function AuditPage() {
                   <th style={th}>Urgency</th>
                   <th style={th}>Reach</th>
                   <th style={th}>Sent</th>
+                  <th style={th}></th>
                 </tr>
               </thead>
               <tbody>
@@ -117,6 +119,9 @@ export default async function AuditPage() {
                       <td style={td}><Tag color={row.urgency === "HIGH" ? "#dc2626" : "#64748b"}>{row.urgency}</Tag></td>
                       <td style={td}>{row.reach_estimate ? row.reach_estimate.toLocaleString("en-SG") : "—"}</td>
                       <td style={td}>{fmtDate(row.sent_at)}</td>
+                      <td style={{ ...td, textAlign: "right" }}>
+                        <DeleteBroadcastButton id={row.id} label={row.confirmation_id} />
+                      </td>
                     </tr>
                   );
                 })}

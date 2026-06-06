@@ -291,38 +291,30 @@ Return ONLY JSON:
     outputSchema: ONLINE_OUTPUT_SCHEMA,
   },
 
-  /* TikTok — tiktok.com search WORKS without login when a cache-bust `t=`
-     timestamp param is included. The URL lands on the "Top" tab which shows
-     a grid of video cards (title + thumbnail + like count). Bypasses the
-     login modal that triggers for bare /search?q=… URLs.                   */
+  /* TikTok — start at the homepage and use the in-page search (the specified
+     flow): search box → type the topic → read the resulting video cards.
+     Never touch the result tabs (Top/Users/Videos/LIVE/Photo).             */
   tiktok: {
-    startUrl: (t) =>
-      `https://www.tiktok.com/search?q=${encodeURIComponent(t)}&t=${Date.now()}`,
-    goal: (t) => `You are on the TikTok search results page for "${t}" — specifically the "Top" tab, which is already selected. The cache-bust timestamp in the URL bypasses the login wall. You will see a grid of TikTok video cards.
+    startUrl: () => `https://www.tiktok.com/`,
+    goal: (t) => `You are on the TikTok HOME page (https://www.tiktok.com/). Your job: search for "${t}", open the "Top" results tab, and read the VIDEO CARDS.
 
-CRITICAL RULES (read carefully):
-- DO NOT click any tab in the header bar — not "Top", not "Users", not "Videos", not "LIVE", not "Photo". The "Top" tab is already the right place and shows video content.
-- DO NOT click on any individual video, account, or "Log in" button.
-- DO NOT close the page or open a user profile.
-- If a "Log in" modal pops up, dismiss it with its X button only — DO NOT click "Continue with email" or any login option.
+STEP-BY-STEP — follow exactly:
+1. Click the SEARCH button/icon (the magnifying glass) or the search input box at the top of the page.
+2. Type "${t}" into the search box and submit it (press Enter, or click the search/submit button).
+3. On the results page, click the "Top" tab to select it. Do NOT click any other tab — not "Users", "Videos", "LIVE", "Photo", or "Reposts". ONLY "Top".
+4. Read the grid of VIDEO CARDS shown under the "Top" tab.
+- If a "Log in" modal pops up, close it with its X button only — never click any login option.
+- Do NOT click into any individual video or open a profile.
 
-WHAT YOU SEE:
-The "Top" tab shows a grid of video card thumbnails. Each card has:
-- A thumbnail image
-- A video TITLE or CAPTION (often with hashtags like "#covid #2020")
-- A like count (e.g. "158.7K", "8348", "2357")
-- An uploader handle near the bottom (e.g. "amelias_lyfee", "meddecode")
+Each video card shows: a thumbnail, a TITLE/CAPTION (often with hashtags), a like count (e.g. "158.7K"), and an uploader handle.
 
-WHAT TO DO:
-Read the top 8–12 video cards visible on this page. For EACH card, capture an entry:
-- "text": the video title/caption verbatim (keep hashtags, emojis, anything visible)
+Read the top 8–12 video cards. For EACH card capture:
+- "text": the video title/caption verbatim (keep hashtags, emojis)
 - "shares": the like count + uploader handle (e.g. "158.7K likes · vano_6787")
 
-Capture EVERY card you can see — don't pre-filter for "misinformation". The downstream classifier decides which are problematic.
+Capture EVERY card you can see — do not pre-filter. Tag where: "TikTok".
 
-If the page renders without any video cards (unlikely — should not happen with this URL), return 2 entries saying "TikTok search page loaded but no cards visible for '${t}'".
-
-Budget: 45 seconds max. Return JSON as soon as you have 5+ entries.
+Budget: 60 seconds max. Return JSON as soon as you have 5+ entries.
 
 Return ONLY JSON:
 {

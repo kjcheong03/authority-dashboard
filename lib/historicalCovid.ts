@@ -74,9 +74,9 @@ export const covidDateBounds = {
   max: covidWeekly[covidWeekly.length - 1].date,
 };
 
-// Date the dashboard defaults to for COVID — peak of the 2023-12 wave, the
-// most dramatic frame to show on first load (officer sees crisis intensity).
-export const defaultCovidDate = "2023-12-11";
+// Date the dashboard defaults to for COVID — aligned with the CARA caregiver
+// app's default (20 Nov 2023) so both surfaces open on the same week.
+export const defaultCovidDate = "2023-11-20";
 
 type Tier = "LOW" | "MONITOR" | "ELEVATED" | "HIGH";
 type TrendDir = "rising" | "easing" | "steady";

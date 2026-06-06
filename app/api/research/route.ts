@@ -7,6 +7,7 @@ import {
   classifyClaims,
   generateAssessment,
   generateDraft,
+  generateFallbackClaims,
   type RawClaim,
 } from "@/lib/agents";
 import { VERIFIED_AGENTS, ONLINE_AGENTS } from "@/lib/channelAgents";
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
   };
   const topic: TopicInput = {
     topic: body.topic?.trim() || "Dengue Surge — East Region",
-    region: body.region?.trim() || "East Region",
+    region: body.region?.trim() || "Singapore",
     audience: body.audience?.trim() || "Caregivers of elderly",
   };
   const replay = body.mode === "replay";
@@ -377,42 +378,76 @@ export async function POST(req: NextRequest) {
         }
         const spread = await spreadPromise;
 
-        send({ type: "LOG", level: "info", message: `Classifying ${rawClaims.length} claims against verified guidance…`, ts: ts() });
-        // Map by claim text so we can re-attach the TinyFish provenance after
-        // classification (the classifier preserves text but drops extras).
+        // Map by claim text so we can re-attach the TinyFish provenance to each signal.
         const provenanceByText = new Map<string, { tinyfishRunId?: string; tinyfishStepId?: string }>(
           rawClaims.map((c) => [c.text, { tinyfishRunId: c.tinyfishRunId, tinyfishStepId: c.tinyfishStepId }]),
         );
-        const classified = await classifyClaims(rawClaims, findings, advisorySummary);
 
+        // STORE ALL scraped signals as the online sources — no upfront misinfo
+        // filtering. Every scraped item becomes a CLAIM event → persisted + shown
+        // under its channel tile. Misinformation is identified later, during
+        // broadcast-content generation.
+        send({ type: "LOG", level: "info", message: `Storing ${rawClaims.length} online signals across sources…`, ts: ts() });
         const emitted: Claim[] = [];
         let idx = 0;
-        for (const c of classified) {
+        for (const c of rawClaims) {
           const prov = provenanceByText.get(c.text) ?? {};
           const claim: Claim = {
-            ...c,
             id: `claim_${idx++}`,
+            text: c.text,
+            severity: "UNVERIFIED", // unverified online mention; misinfo is judged at broadcast generation
+            where: c.where,
+            shares: c.shares,
             velocity: spread?.velocityLabel,
             tinyfishRunId: prov.tinyfishRunId,
             tinyfishStepId: prov.tinyfishStepId,
           };
           emitted.push(claim);
           send({ type: "CLAIM", claim });
-          send({
-            type: "LOG",
-            level: "warn",
-            message: `Flagged ${claim.severity === "UNVERIFIED" ? "UNVERIFIED" : "discrepancy"}: "${claim.text.slice(0, 60)}…"`,
-            ts: ts(),
-          });
-          await delay(300);
         }
+        send({ type: "LOG", level: "ok", message: `Stored ${emitted.length} signals across ${new Set(emitted.map((c) => c.where)).size} sources.`, ts: ts() });
+
+        pct = 80;
+        send({ type: "PROGRESS_PCT", pct });
+
+        // ─── Misinformation for online sources + the broadcast ───────────────
+        // Find misinformation from the live scrape, AND always augment with
+        // OpenAI-recalled prominent misinformation tied to these platforms. The
+        // OpenAI claims are stored in the SAME Claim format so they appear under the
+        // online source tiles alongside the scraped signals, and they feed the
+        // broadcast assessment + draft.
+        send({ type: "LOG", level: "info", message: "Scanning signals + recalling prominent platform misinformation via OpenAI…", ts: ts() });
+        const scrapedMisinfo = await classifyClaims(rawClaims, findings, advisorySummary);
+        const aiMisinfo = await generateFallbackClaims(topic, advisorySummary, findings, Object.values(onlineDisplay));
+        // Store the OpenAI misinformation as claims too — shown in online sources.
+        for (const m of aiMisinfo) {
+          const claim: Claim = { ...m, id: `claim_${idx++}`, velocity: spread?.velocityLabel };
+          emitted.push(claim);
+          send({ type: "CLAIM", claim });
+        }
+        // Combined, de-duplicated misinformation set for the broadcast.
+        const seenMisinfo = new Set<string>();
+        const misinfo = [...scrapedMisinfo, ...aiMisinfo].filter((m) => {
+          const k = m.text.trim().toLowerCase();
+          if (seenMisinfo.has(k)) return false;
+          seenMisinfo.add(k);
+          return true;
+        });
+        send({
+          type: "LOG",
+          level: misinfo.length ? "ok" : "warn",
+          message: misinfo.length
+            ? `${misinfo.length} misinformation claim${misinfo.length === 1 ? "" : "s"} for the broadcast (${scrapedMisinfo.length} scraped + ${aiMisinfo.length} via OpenAI).`
+            : "No misinformation identified for the broadcast.",
+          ts: ts(),
+        });
 
         pct = 82;
         send({ type: "PROGRESS_PCT", pct });
 
         /* ─── Broadcast assessment — the decision spine ──────────────────── */
         send({ type: "LOG", level: "info", message: "Weighing local relevance, spread and misinformation…", ts: ts() });
-        const assessment = await generateAssessment(topic, advisorySummary, findings, spread, classified);
+        const assessment = await generateAssessment(topic, advisorySummary, findings, spread, misinfo);
         send({ type: "ASSESSMENT", assessment });
         send({ type: "LOG", level: "ok", message: `Assessment: ${assessment.verdict} — ${assessment.rationale}`, ts: ts() });
 
@@ -420,7 +455,7 @@ export async function POST(req: NextRequest) {
         send({ type: "PHASE", phase: "draft", label: "Drafting advisory" });
         send({ type: "LOG", level: "info", message: `Drafting for ${assessment.audience}…`, ts: ts() });
 
-        const draft = await generateDraft({ ...topic, audience: assessment.audience }, advisorySummary, findings, classified, hazardSnapshot);
+        const draft = await generateDraft({ ...topic, audience: assessment.audience }, advisorySummary, findings, misinfo, hazardSnapshot);
         draft.urgency = assessment.urgency; // keep the draft consistent with the verdict
         send({ type: "DRAFT", draft });
 

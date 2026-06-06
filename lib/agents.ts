@@ -190,10 +190,76 @@ Return ONLY JSON: { "claims": [ { "text","severity","where","shares","contradict
   });
 
   const data = (await res.json()) as { choices?: Array<{ message: { content: string } }> };
+  if (!res.ok) console.error("[classifyClaims] OpenAI error", res.status, JSON.stringify(data).slice(0, 240));
   const content = data.choices?.[0]?.message?.content ?? "{}";
   try {
     const parsed = JSON.parse(content) as { claims?: Omit<Claim, "id">[] };
     return parsed.claims ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/* ─── OpenAI fallback: recall prominent KNOWN misinformation ──────────────────
+ * When the live scrape surfaces no validated misinformation, recall the 2–4 most
+ * prominent real misinformation claims that have circulated about the topic on the
+ * monitored platforms. Same shape as classifyClaims so it stores + renders the
+ * same way. Degrades to [] on any error. */
+export async function generateFallbackClaims(
+  t: TopicInput,
+  advisorySummary: string,
+  findings: Finding[],
+  platforms: string[],
+): Promise<Omit<Claim, "id">[]> {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
+      body: JSON.stringify({
+        model: MODEL_CLASSIFY,
+        temperature: 0.4,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `You are CARA's misinformation-intelligence engine for Singapore public health.
+A live scrape of public channels surfaced NO clearly-flagged misinformation for the topic below.
+Using your knowledge of REAL misinformation that has actually circulated about this topic — especially
+in the Singapore / Southeast Asian context — list the 2 to 4 MOST PROMINENT misinformation claims,
+judged against the official guidance.
+
+Rules:
+- Real, commonly-seen misinformation patterns only. Do NOT invent far-fetched claims.
+- Each must contradict or distort the official guidance in a way that could cause harm or confusion.
+- "where" MUST be one platform chosen from this list (pick the most plausible per claim): ${platforms.join(", ")}.
+- Severity: "UNVERIFIED" for harmful/contradicting claims (e.g. fake cures); "MINOR_DISCREPANCY" for lower-risk confusion.
+- Write tersely. No filler, no hedging.
+
+For each claim return:
+- text: the claim as people state it, one sentence
+- severity
+- where: the platform name only, max 3 words
+- shares: a short plausible spread indicator (e.g. "circulating widely") or omit
+- contradicts: which official guidance it distorts — one clause
+- analysis: why it is wrong/risky — one short clause
+- fix: the clarification for a broadcast — one short sentence
+
+Return ONLY JSON: { "claims": [ { "text","severity","where","shares","contradicts","analysis","fix" } ] }`,
+          },
+          {
+            role: "user",
+            content: `TOPIC: ${t.topic}${t.region ? ` (${t.region})` : ""}\n\nOFFICIAL GUIDANCE SUMMARY:\n${advisorySummary}\n\nVERIFIED FINDINGS:\n${JSON.stringify(findings, null, 2)}`,
+          },
+        ],
+      }),
+    });
+    const data = (await res.json()) as { choices?: Array<{ message: { content: string } }> };
+    if (!res.ok) console.error("[generateFallbackClaims] OpenAI error", res.status, JSON.stringify(data).slice(0, 240));
+    const content = data.choices?.[0]?.message?.content ?? "{}";
+    const parsed = JSON.parse(content) as { claims?: Omit<Claim, "id">[] };
+    const out = (parsed.claims ?? []).slice(0, 4);
+    if (!out.length) console.error("[generateFallbackClaims] returned 0 — status", res.status, "content:", content.slice(0, 200));
+    return out;
   } catch {
     return [];
   }
@@ -448,6 +514,7 @@ urgency is "HIGH" or "NORMAL".`,
   });
 
   const data = (await res.json()) as { choices?: Array<{ message: { content: string } }> };
+  if (!res.ok) console.error("[generateDraft] OpenAI error", res.status, JSON.stringify(data).slice(0, 240));
   const content = data.choices?.[0]?.message?.content ?? "{}";
   try {
     const d = JSON.parse(content) as Draft;
@@ -460,5 +527,59 @@ urgency is "HIGH" or "NORMAL".`,
     };
   } catch {
     return { title: "[ADVISORY]", body: "Draft generation failed.", target: t.audience, urgency: "HIGH" };
+  }
+}
+
+/* ─── OpenAI: translate an advisory into a CARA app language ───────────────────
+ * Preserves the markdown (bold **headers**, paragraph breaks, [text](url) links)
+ * so the translated advisory renders identically. Returns the original on any
+ * failure or unknown language. */
+const TRANSLATE_LABELS: Record<string, string> = {
+  zh: "Simplified Chinese (中文)",
+  ms: "Bahasa Melayu (Malay)",
+  id: "Bahasa Indonesia",
+  tl: "Tagalog (Filipino)",
+  my: "Burmese (Myanmar, မြန်မာ)",
+};
+
+export async function translateAdvisory(
+  title: string,
+  body: string,
+  lang: string,
+): Promise<{ title: string; body: string }> {
+  const label = TRANSLATE_LABELS[lang];
+  if (!label) return { title, body }; // English or unknown → unchanged
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_KEY}` },
+      body: JSON.stringify({
+        model: MODEL_DRAFT,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages: [
+          {
+            role: "system",
+            content: `Translate this Singapore public-health advisory for ELDERLY CAREGIVERS into ${label}.
+PRESERVE THE MARKDOWN STRUCTURE EXACTLY:
+- Keep each **bold section header** on its own line and bold — translate the header WORDS (e.g. "**Situation**" → "**<translated word>**").
+- Keep the blank lines between sections (\\n\\n).
+- Keep [visible text](url) markdown links — translate the visible text, keep the URL identical.
+- Keep numbers, dates, dosages, and agency names (MOH, NEA, WHO, CDC, HealthHub) unchanged.
+Use a natural, clear, respectful tone for older readers. Return ONLY JSON: { "title": "...", "body": "..." }`,
+          },
+          { role: "user", content: `TITLE:\n${title}\n\nBODY:\n${body}` },
+        ],
+      }),
+    });
+    const data = (await res.json()) as { choices?: Array<{ message: { content: string } }> };
+    if (!res.ok) {
+      console.error("[translateAdvisory] OpenAI error", res.status, JSON.stringify(data).slice(0, 200));
+      return { title, body };
+    }
+    const parsed = JSON.parse(data.choices?.[0]?.message?.content ?? "{}") as { title?: string; body?: string };
+    return { title: parsed.title || title, body: parsed.body || body };
+  } catch {
+    return { title, body };
   }
 }

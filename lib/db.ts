@@ -486,6 +486,9 @@ export interface NewBroadcast {
   audienceMode: "all" | "selected";
   targetProfiles: string[];
   reachEstimate?: number;
+  /** Per-language versions ({ zh: {title, body}, ... }) — stored so the CARA app
+   *  can show each caregiver the broadcast in their selected language. */
+  translations?: Record<string, { title: string; body: string }>;
 }
 
 function genConfirmationId(): string {
@@ -502,7 +505,7 @@ export async function saveBroadcast(b: NewBroadcast): Promise<{ id: string; conf
   const reach = b.reachEstimate ?? estimateReach(b.audienceMode, b.targetProfiles);
   const res = await safe(sb.from("broadcasts").insert({
     run_id: b.runId,
-    draft_snapshot: { title: b.title, body: b.body, urgency: b.urgency },
+    draft_snapshot: { title: b.title, body: b.body, urgency: b.urgency, translations: b.translations ?? {} },
     title: b.title,
     body: b.body,
     urgency: b.urgency,
@@ -568,4 +571,12 @@ export async function listBroadcasts(limit = 20) {
     .order("sent_at", { ascending: false })
     .limit(limit);
   return data ?? [];
+}
+
+/** Delete a broadcast record by id. Returns true on success. */
+export async function deleteBroadcast(id: string): Promise<boolean> {
+  const sb = db();
+  if (!sb) return false;
+  const res = await safe(sb.from("broadcasts").delete().eq("id", id));
+  return res !== null;
 }
