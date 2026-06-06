@@ -7,7 +7,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700", "800"], variable: "--font-rounded", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "CARA · Authority Dashboard",
+  title: "Authority Dashboard",
   description: "Validate public-health emergency topics and detect misinformation, powered by live agentic research.",
 };
 
