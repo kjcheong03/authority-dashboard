@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { reveal } from "@/lib/motion";
 import type { Claim, Spread } from "@/lib/types";
 import { SOCIAL_CHANNELS, channelForWhere, faviconUrl, type Channel } from "@/lib/channels";
-import { SnapshotModal } from "./SnapshotModal";
 import { SourceItemsModal } from "./SourceItemsModal";
 
 const ACCENT = "#b45309";
@@ -20,7 +19,6 @@ export function Misinfo({
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const [snapshotOf, setSnapshotOf] = useState<Claim | null>(null);
   const [inspectChannel, setInspectChannel] = useState<Channel | null>(null);
 
   const byChannel = useMemo(() => {
@@ -55,17 +53,7 @@ export function Misinfo({
         channel={inspectChannel}
         accent={ACCENT}
         claims={inspectChannel ? (byChannel.get(inspectChannel.id) ?? []) : []}
-        onSnapshot={(item) => setSnapshotOf(item as Claim)}
         onClose={() => setInspectChannel(null)}
-      />
-
-      <SnapshotModal
-        open={!!snapshotOf}
-        runId={snapshotOf?.tinyfishRunId}
-        stepId={snapshotOf?.tinyfishStepId}
-        sourceName={snapshotOf?.where ?? "Source"}
-        itemText={snapshotOf?.text ?? ""}
-        onClose={() => setSnapshotOf(null)}
       />
     </>
   );
@@ -111,7 +99,7 @@ function SourceTile({
         outline: "none",
       }}
     >
-      <div style={{ position: "relative", padding: "12px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%" }}>
+      <div style={{ position: "relative", padding: "12px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, height: "100%" }}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (hasData) onInspect(); }}

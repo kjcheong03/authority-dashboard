@@ -3,8 +3,8 @@
 /* ───────────────────────────────────────────────────────────────────────────
  * SourceItemsModal — opens when an officer clicks the (i) button on a source
  * tile. Shows every finding / claim that came from that source for the
- * current run, in a large dedicated viewer. Each row has its own [📸] button
- * that fires the SnapshotModal — wired by the parent component.
+ * current run, in a large dedicated viewer. Each row has its own
+ * 'View source ↗' link that opens the actual URL the agent extracted from.
  * ─────────────────────────────────────────────────────────────────────────── */
 
 import type { Finding, Claim } from "@/lib/types";
@@ -20,7 +20,6 @@ export function SourceItemsModal({
   accent,
   findings,
   claims,
-  onSnapshot,
   onClose,
 }: {
   open: boolean;
@@ -29,7 +28,6 @@ export function SourceItemsModal({
   // Pass in whichever list this source contributes to (always one of the two).
   findings?: Finding[];
   claims?: Claim[];
-  onSnapshot: (item: Finding | Claim) => void;
   onClose: () => void;
 }) {
   if (!open || !channel) return null;
@@ -91,9 +89,9 @@ export function SourceItemsModal({
               {items.map((it, i) => (
                 <li key={i}>
                   {it.kind === "finding" ? (
-                    <FindingRow f={it.finding} accent={accent} onSnapshot={() => onSnapshot(it.finding)} />
+                    <FindingRow f={it.finding} accent={accent} />
                   ) : (
-                    <ClaimRow c={it.claim} accent={accent} onSnapshot={() => onSnapshot(it.claim)} />
+                    <ClaimRow c={it.claim} accent={accent} />
                   )}
                 </li>
               ))}
@@ -105,8 +103,9 @@ export function SourceItemsModal({
   );
 }
 
-function FindingRow({ f, accent, onSnapshot }: { f: Finding; accent: string; onSnapshot: () => void }) {
-  const hasSnap = !!f.tinyfishRunId && !!f.tinyfishStepId;
+function FindingRow({ f, accent }: { f: Finding; accent: string }) {
+  // Prefer the agent-extracted sourceUrl, fall back to the legacy url field.
+  const href = f.sourceUrl ?? f.url;
   return (
     <div style={rowCard}>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -131,13 +130,12 @@ function FindingRow({ f, accent, onSnapshot }: { f: Finding; accent: string; onS
           </div>
         )}
       </div>
-      <SnapshotBtn onClick={onSnapshot} disabled={!hasSnap} accent={accent} />
+      <SourceLinkBtn href={href} accent={accent} />
     </div>
   );
 }
 
-function ClaimRow({ c, accent, onSnapshot }: { c: Claim; accent: string; onSnapshot: () => void }) {
-  const hasSnap = !!c.tinyfishRunId && !!c.tinyfishStepId;
+function ClaimRow({ c, accent }: { c: Claim; accent: string }) {
   const danger = c.severity === "UNVERIFIED";
   return (
     <div style={{ ...rowCard, background: danger ? "#fef2f2" : "#fff" }}>
@@ -166,32 +164,52 @@ function ClaimRow({ c, accent, onSnapshot }: { c: Claim; accent: string; onSnaps
           </div>
         )}
       </div>
-      <SnapshotBtn onClick={onSnapshot} disabled={!hasSnap} accent={accent} />
+      <SourceLinkBtn href={c.sourceUrl} accent={accent} />
     </div>
   );
 }
 
-function SnapshotBtn({ onClick, disabled, accent }: { onClick: () => void; disabled: boolean; accent: string }) {
+function SourceLinkBtn({ href, accent }: { href: string | undefined; accent: string }) {
+  const disabled = !href;
+  const baseStyle: React.CSSProperties = {
+    flexShrink: 0,
+    width: 30, height: 30, borderRadius: 8,
+    display: "grid", placeItems: "center",
+    border: "1px solid var(--orca-line)", background: "#fff",
+    color: disabled ? "#cbd5e1" : accent,
+    cursor: disabled ? "not-allowed" : "pointer",
+    textDecoration: "none",
+  };
+  const icon = (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+  if (disabled) {
+    return (
+      <span
+        title="No source URL"
+        aria-label="No source URL"
+        aria-disabled="true"
+        style={baseStyle}
+      >
+        {icon}
+      </span>
+    );
+  }
   return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      title={disabled ? "No snapshot recorded" : "View the page ORCA extracted from"}
-      aria-label="View source snapshot"
-      style={{
-        flexShrink: 0,
-        width: 30, height: 30, borderRadius: 8,
-        display: "grid", placeItems: "center",
-        border: "1px solid var(--orca-line)", background: "#fff",
-        color: disabled ? "#cbd5e1" : accent,
-        cursor: disabled ? "not-allowed" : "pointer",
-      }}
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      title="Open source URL in a new tab"
+      aria-label="View source"
+      style={baseStyle}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-        <circle cx="12" cy="13" r="4" />
-      </svg>
-    </button>
+      {icon}
+    </a>
   );
 }
 

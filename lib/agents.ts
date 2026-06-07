@@ -436,6 +436,7 @@ export async function generateDraft(
   findings: Finding[],
   claims: Omit<Claim, "id">[],
   hazard?: HazardSnapshot | null,
+  audience?: { mode: "all" | "selected"; profiles: string[] },
 ): Promise<Draft> {
   const hazardBlock = hazard
     ? `\n\nLIVE DASHBOARD STATS (authoritative — Situation section MUST use these exact numbers, do not invent or substitute):\n${formatHazardSnapshot(hazard)}`
@@ -473,6 +474,22 @@ A finding belongs in the broadcast ONLY if it leads to a clear caregiver action 
 
 If a finding is technical, TRANSLATE it into one of those caregiver-actionable items instead of repeating it. Example: "wastewater levels rising" → "case numbers are trending up — stay alert to symptoms"; "JN.1 descendant variants dominate" → (just drop it entirely; no caregiver action).
 
+AUDIENCE TAILORING
+If audience.mode === 'selected' and audience.profiles is non-empty, tailor the
+**Facts** and **What to do** sections to risks specific to those conditions.
+Examples:
+  - Diabetes + COVID-19 → glucose monitoring during fever, increased severity
+    risk for uncontrolled diabetes, hydration concerns.
+  - Heart + COVID-19 → myocarditis risk, post-vaccine cardiac symptoms.
+  - Kidney + Dengue → fluid balance management, AKI risk during dehydration.
+  - Stroke + Influenza → flu-shot eligibility, anticoagulant interaction notes.
+The Headline and Situation sections stay general — specialisation happens in
+Facts and What-to-do only. Always end with symptoms + when-to-seek-care as
+already required.
+
+If audience.mode === 'all' or audience is undefined, write generically for
+elderly caregivers without condition-specific tailoring.
+
 TITLE — short, plain-language takeaway of the single most important fact (max ~8 words). State the conclusion, not a label.
   Good: "No Hantavirus outbreak in Singapore", "Dengue surging in East Region — protect the elderly"
   Bad:  "Public Health Advisory: Hantavirus Update for Caregivers of the Elderly in East Region"
@@ -507,7 +524,7 @@ urgency is "HIGH" or "NORMAL".`,
         },
         {
           role: "user",
-          content: `TOPIC: ${t.topic}\nREGION: ${t.region}\nAUDIENCE: ${t.audience}${hazardBlock}\n\nOFFICIAL GUIDANCE:\n${advisorySummary}\n\nVERIFIED FINDINGS:\n${JSON.stringify(findings, null, 2)}\n\nCIRCULATING MISINFORMATION:\n${JSON.stringify(claims, null, 2)}`,
+          content: `TOPIC: ${t.topic}\nREGION: ${t.region}\nAUDIENCE: ${t.audience}${hazardBlock}\n\nOFFICIAL GUIDANCE:\n${advisorySummary}\n\nVERIFIED FINDINGS:\n${JSON.stringify(findings, null, 2)}\n\nCIRCULATING MISINFORMATION:\n${JSON.stringify(claims, null, 2)}\n\nAUDIENCE:\nmode: ${audience?.mode ?? "all"}\nprofiles: ${audience?.profiles?.length ? audience.profiles.join(", ") : "—"}`,
         },
       ],
     }),

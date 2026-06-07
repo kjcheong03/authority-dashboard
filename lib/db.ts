@@ -105,9 +105,8 @@ export async function saveFinding(runId: string | null, f: Finding, ordinal: num
     stat: f.stat ?? null,
     text: f.text,
     url: f.url ?? null,
+    source_url: f.sourceUrl ?? null,
     time_ago: f.timeAgo ?? null,
-    tinyfish_run_id: f.tinyfishRunId ?? null,
-    tinyfish_step_id: f.tinyfishStepId ?? null,
     ordinal,
   }));
 }
@@ -128,8 +127,7 @@ export async function saveClaim(runId: string | null, c: Claim, ordinal: number)
     analysis: c.analysis ?? null,
     fix: c.fix ?? null,
     velocity: c.velocity ?? null,
-    tinyfish_run_id: c.tinyfishRunId ?? null,
-    tinyfish_step_id: c.tinyfishStepId ?? null,
+    source_url: c.sourceUrl ?? null,
     ordinal,
   }).select("id").single());
   return res?.data?.id ?? null;
@@ -216,6 +214,63 @@ export async function saveDraft(runId: string | null, d: Draft) {
   }));
 }
 
+export interface DraftHistoryRecord {
+  runId: string | null;
+  title: string;
+  body: string;
+  target: string;
+  urgency: 'HIGH' | 'NORMAL';
+  audienceMode: 'all' | 'selected';
+  profiles?: string[];
+}
+
+export async function saveDraftHistory(rec: DraftHistoryRecord): Promise<{ id: string } | null> {
+  if (!rec.runId) return null;
+  const sb = db();
+  if (!sb) return null;
+  const res = await safe(sb.from('draft_history').insert({
+    run_id: rec.runId,
+    title: rec.title,
+    body: rec.body,
+    target: rec.target,
+    urgency: rec.urgency,
+    audience_mode: rec.audienceMode,
+    profiles: rec.profiles ?? null,
+  }).select('id').single());
+  return res?.data ? { id: (res.data as { id: string }).id } : null;
+}
+
+export interface HistoryEntry {
+  id: string;
+  title: string;
+  body: string;
+  target: string;
+  urgency: 'HIGH' | 'NORMAL';
+  audienceMode: 'all' | 'selected';
+  profiles: string[] | null;
+  createdAt: string;
+}
+
+export async function listDraftHistory(runId: string): Promise<HistoryEntry[]> {
+  const sb = db();
+  if (!sb) return [];
+  const { data } = await sb
+    .from('draft_history')
+    .select('id, title, body, target, urgency, audience_mode, profiles, created_at')
+    .eq('run_id', runId)
+    .order('created_at', { ascending: false });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    body: r.body,
+    target: r.target,
+    urgency: r.urgency,
+    audienceMode: r.audience_mode,
+    profiles: r.profiles ?? null,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function saveSource(runId: string | null, src: SourceRef, ordinal: number) {
   if (!runId) return;
   const sb = db();
@@ -228,41 +283,6 @@ export async function saveLog(runId: string | null, level: "info" | "warn" | "ok
   const sb = db();
   if (!sb) return;
   await safe(sb.from("run_logs").insert({ run_id: runId, level, message, ts: ts ? new Date().toISOString() : new Date().toISOString() }));
-}
-
-/**
- * Persist per-channel TinyFish session metadata. One row per (run × channel).
- * Upserts so the row can be created at session start and completed at finish.
- */
-export interface ChannelSessionRecord {
-  runId: string | null;
-  channelId: string;
-  lane: "verified" | "online";
-  tinyfishRunId?: string | null;
-  lastStepId?: string | null;
-  startUrl?: string | null;
-  goal?: string | null;
-  status: "pending" | "ok" | "failed" | "cancelled";
-  itemCount?: number;
-  completedAt?: string | null;
-}
-
-export async function saveChannelSession(rec: ChannelSessionRecord) {
-  if (!rec.runId) return;
-  const sb = db();
-  if (!sb) return;
-  await safe(sb.from("channel_sessions").upsert({
-    run_id:          rec.runId,
-    channel_id:      rec.channelId,
-    lane:            rec.lane,
-    tinyfish_run_id: rec.tinyfishRunId ?? null,
-    last_step_id:    rec.lastStepId ?? null,
-    start_url:       rec.startUrl ?? null,
-    goal:            rec.goal ?? null,
-    status:          rec.status,
-    item_count:      rec.itemCount ?? 0,
-    completed_at:    rec.completedAt ?? null,
-  }, { onConflict: "run_id,channel_id" }));
 }
 
 /* ─── Hydration: load a saved run for autofill ────────────────────────────── */
@@ -341,10 +361,9 @@ export async function loadRun(runId: string): Promise<HydratedRun | null> {
     analysis: c.analysis ?? undefined,
     fix: c.fix ?? undefined,
     velocity: c.velocity ?? undefined,
+    sourceUrl: c.source_url ?? undefined,
     origin: originsByClaim.get(c.id),
     factChecks: fcByClaim.get(c.id),
-    tinyfishRunId: c.tinyfish_run_id ?? undefined,
-    tinyfishStepId: c.tinyfish_step_id ?? undefined,
   }));
 
   const findings: Finding[] = (findingsRes.data ?? []).map((f) => ({
@@ -352,9 +371,8 @@ export async function loadRun(runId: string): Promise<HydratedRun | null> {
     stat: f.stat ?? undefined,
     text: f.text,
     url: f.url ?? undefined,
+    sourceUrl: f.source_url ?? undefined,
     timeAgo: f.time_ago ?? undefined,
-    tinyfishRunId: f.tinyfish_run_id ?? undefined,
-    tinyfishStepId: f.tinyfish_step_id ?? undefined,
   }));
 
   const sp = spreadRes.data;

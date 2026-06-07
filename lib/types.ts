@@ -17,10 +17,7 @@ export interface Finding {
   text: string; // human-readable finding
   url?: string;
   timeAgo?: string; // "12 mins ago"
-  // Provenance: which TinyFish session produced this + the last step (used to
-  // fetch a screenshot + HTML snapshot of the page the agent extracted from).
-  tinyfishRunId?: string;
-  tinyfishStepId?: string;
+  sourceUrl?: string; // actual URL the agent extracted from
 }
 
 /** A consulted source (drives the "consulted N sources" chips). */
@@ -68,10 +65,7 @@ export interface Claim {
   velocity?: string; // optional GDELT-style spread label: SURGING / RISING ...
   origin?: ClaimOrigin; // (legacy) traced origin & propagation
   factChecks?: FactCheck[]; // (legacy) corroborating published fact-checks
-  // Provenance: TinyFish session + step where this claim was found. Drives the
-  // [📸] snapshot button in the misinformation panel.
-  tinyfishRunId?: string;
-  tinyfishStepId?: string;
+  sourceUrl?: string; // actual URL the agent extracted from
 }
 
 /** Real-world coverage signal from GDELT (the live half of misinfo intelligence). */

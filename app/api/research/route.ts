@@ -1,6 +1,5 @@
 import { NextRequest } from "next/server";
 import type { ServerEvent, Claim, Finding, TopicInput } from "@/lib/types";
-import { runAgent, coerceResult, cancelRuns, getRunSteps } from "@/lib/tinyfish";
 import { getSpread } from "@/lib/spread";
 import { fetchDengueClusters } from "@/lib/datagovsg";
 import {
@@ -10,7 +9,8 @@ import {
   generateFallbackClaims,
   type RawClaim,
 } from "@/lib/agents";
-import { VERIFIED_AGENTS, ONLINE_AGENTS } from "@/lib/channelAgents";
+import { runChannel, CHANNELS } from "@/lib/scrapers";
+import type { ScrapedItem } from "@/lib/scrapers/types";
 import { REPLAY_EVENTS } from "@/lib/replay";
 import {
   createRun,
@@ -23,9 +23,9 @@ import {
   saveSpread,
   saveAssessment,
   saveDraft,
+  saveDraftHistory,
   saveSource,
   saveLog,
-  saveChannelSession,
 } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -63,10 +63,6 @@ export async function POST(req: NextRequest) {
   // Persistence ordinal counters (preserve emit order in DB).
   const ord = { finding: 0, claim: 0, source: 0 };
 
-  // Every TinyFish session's run_id collected via the STARTED event — so a Stop
-  // click bulk-cancels them all instead of letting them run to budget.
-  const activeTinyfishRuns = new Set<string>();
-
   // Serialise DB writes so CLAIM lands before any later references.
   let persistChain: Promise<void> = Promise.resolve();
   const persist = (fn: () => Promise<void>) => {
@@ -75,13 +71,12 @@ export async function POST(req: NextRequest) {
 
   const stream = new ReadableStream({
     async start(controller) {
-      // The client's AbortController fires this on Stop. We mark the run stopped,
-      // tell TinyFish to kill every in-flight browser session, and short-circuit.
+      // The client's AbortController fires this on Stop. We mark the run stopped
+      // and short-circuit.
       let aborted = false;
       const onAbort = () => {
         aborted = true;
         markRunDone(runId, "stopped").catch(() => {});
-        if (activeTinyfishRuns.size) cancelRuns([...activeTinyfishRuns]).catch(() => {});
         try { controller.close(); } catch { /* already closed */ }
       };
       req.signal.addEventListener("abort", onAbort);
@@ -109,9 +104,6 @@ export async function POST(req: NextRequest) {
             break;
           case "SOURCE":
             persist(() => saveSource(runId, e.source, ord.source++));
-            break;
-          case "FINDING":
-            persist(() => saveFinding(runId, e.finding, ord.finding++));
             break;
           case "CLAIM":
             persist(async () => { await saveClaim(runId, e.claim, ord.claim++); });
@@ -146,103 +138,53 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        /* ─── PHASE 1: INGEST — 5 verified-source agents in parallel ─────── */
+        /* ─── PHASE 1: INGEST — verified-source scrapers in parallel ─────── */
         send({ type: "PHASE", phase: "ingest", label: "High-priority ingest" });
-        send({ type: "LOG", level: "info", message: `Initialising research on "${topic.topic}" across ${Object.keys(VERIFIED_AGENTS).length} verified sources…`, ts: ts() });
 
         let pct = 5;
         send({ type: "PROGRESS_PCT", pct });
 
         // data.gov.sg ground-truth (NEA dengue clusters) — supplementary enrichment
-        // that runs alongside the per-source TinyFish agents.
+        // that runs alongside the per-source scrapers.
         const isDengue = /dengue/i.test(topic.topic);
         const clustersPromise = isDengue ? fetchDengueClusters() : Promise.resolve(null);
 
-        // Fire all verified-source TinyFish sessions IN PARALLEL. Each session
-        // streams its own browser URL → tagged to the tile in the surveillance
-        // grid via CHANNEL_STREAMING_URL. Promise.allSettled so one stalled site
-        // doesn't kill the whole phase.
-        const verifiedTasks = Object.entries(VERIFIED_AGENTS).map(([channelId, cfg]) => ({ channelId, cfg }));
-        send({ type: "LOG", level: "info", message: `Firing ${verifiedTasks.length} parallel TinyFish sessions: ${verifiedTasks.map((t) => t.channelId.toUpperCase()).join(", ")}`, ts: ts() });
-
-        const verifiedRuns: Record<string, string | undefined> = {};
+        // Fire all verified-source scrapers IN PARALLEL.
+        // Promise.allSettled so one stalled site doesn't kill the whole phase.
+        const verifiedChannels = CHANNELS.filter((c) => c.lane === "verified");
+        send({ type: "LOG", level: "info", message: "Scanning " + verifiedChannels.length + " verified sources in parallel…", ts: ts() });
         const verifiedResults = await Promise.allSettled(
-          verifiedTasks.map(({ channelId, cfg }) =>
-            runAgent({
-              url: cfg.startUrl(topic.topic),
-              goal: cfg.goal(topic.topic),
-              outputSchema: cfg.outputSchema as Record<string, unknown>,
-              onStarted: (rid) => { verifiedRuns[channelId] = rid; activeTinyfishRuns.add(rid); },
-              onStreamingUrl: (url) => send({ type: "CHANNEL_STREAMING_URL", channelId, url }),
-              onProgress: (purpose) => {
-                pct = Math.min(45, pct + 1);
-                send({ type: "LOG", level: "info", message: `${channelId.toUpperCase()}: ${purpose}`, ts: ts() });
-                send({ type: "PROGRESS_PCT", pct });
-              },
-            }).then((raw) => ({ channelId, raw })),
+          verifiedChannels.map((ch) =>
+            runChannel(ch.id, topic.topic, {
+              onLog: (msg) => send({ type: "LOG", level: "info", message: ch.id.toUpperCase() + ": " + msg, ts: ts() }),
+            }).then((r) => ({ ch, result: r })),
           ),
         );
 
-        // For each completed session, fetch its step list once and pick the last
-        // step id — that's the page state we'll attach as snapshot evidence to
-        // every finding the agent produced.
-        const verifiedLastStep: Record<string, string | undefined> = {};
-        await Promise.all(
-          Object.entries(verifiedRuns).map(async ([channelId, rid]) => {
-            if (!rid) return;
-            activeTinyfishRuns.delete(rid);
-            const steps = await getRunSteps(rid);
-            if (steps.length) verifiedLastStep[channelId] = steps[steps.length - 1].id;
-          }),
-        );
-
-        // Collect findings from each successful session. Force the agency tag
-        // so it always matches the channel that produced it (the agent may
-        // tag inconsistently otherwise).
         const findings: Finding[] = [];
         const summaryParts: string[] = [];
-        const channelDisplayName: Record<string, string> = {
-          moh: "MOH", nea: "NEA", who: "WHO", cdc: "CDC", healthhub: "HealthHub",
-        };
-        const verifiedItemCount: Record<string, number> = {};
-        const verifiedStatus: Record<string, "ok" | "failed"> = {};
         for (const r of verifiedResults) {
           if (r.status !== "fulfilled") {
-            send({ type: "LOG", level: "warn", message: `Verified-source agent failed: ${r.reason}`, ts: ts() });
+            send({ type: "LOG", level: "warn", message: "Verified-source scraper failed: " + r.reason, ts: ts() });
             continue;
           }
-          const { channelId, raw } = r.value;
-          const parsed = coerceResult<{ findings?: Finding[]; advisory_summary?: string }>(raw) ?? {};
-          const agencyTag = channelDisplayName[channelId] ?? channelId;
-          const channelFindings = (parsed.findings ?? []).map((f) => ({
-            ...f,
-            agency: agencyTag, // pin agency to its channel — drives source-picker attribution
-            timeAgo: f.timeAgo ?? `${Math.floor(Math.random() * 40) + 5} mins ago`,
-            tinyfishRunId: verifiedRuns[channelId],
-            tinyfishStepId: verifiedLastStep[channelId],
+          const { ch, result } = r.value;
+          const channelFindings: Finding[] = result.items.map((it: ScrapedItem) => ({
+            agency: ch.displayName,
+            stat: it.stat,
+            text: it.text,
+            url: it.url,
+            sourceUrl: it.url,
+            timeAgo: it.timeAgo,
           }));
-          findings.push(...channelFindings);
-          verifiedItemCount[channelId] = channelFindings.length;
-          verifiedStatus[channelId] = "ok";
-          if (parsed.advisory_summary) summaryParts.push(parsed.advisory_summary);
-          send({ type: "LOG", level: "ok", message: `${agencyTag}: ${channelFindings.length} finding${channelFindings.length === 1 ? "" : "s"}`, ts: ts() });
-          // Also surface the channel's site as a consulted-source chip.
-          send({ type: "SOURCE", source: { name: agencyTag, url: `https://www.${channelId === "healthhub" ? "healthhub.sg" : channelId === "who" ? "who.int" : channelId === "cdc" ? "cdc.gov" : channelId + ".gov.sg"}` } });
-        }
-        // Persist per-channel session metadata (one row per source).
-        for (const { channelId, cfg } of verifiedTasks) {
-          persist(() => saveChannelSession({
-            runId,
-            channelId,
-            lane: "verified",
-            tinyfishRunId: verifiedRuns[channelId] ?? null,
-            lastStepId: verifiedLastStep[channelId] ?? null,
-            startUrl: cfg.startUrl(topic.topic),
-            goal: cfg.goal(topic.topic),
-            status: verifiedStatus[channelId] ?? "failed",
-            itemCount: verifiedItemCount[channelId] ?? 0,
-            completedAt: new Date().toISOString(),
-          }));
+          for (const f of channelFindings) {
+            ord.finding++;
+            findings.push(f);
+            send({ type: "FINDING", finding: f });
+            persist(() => saveFinding(runId, f, ord.finding));
+          }
+          send({ type: "SOURCE", source: { name: ch.displayName, url: "https://www." + (ch.id === "who" ? "who.int" : ch.id === "cdc" ? "cdc.gov" : ch.id === "healthhub" ? "healthhub.sg" : ch.id + ".gov.sg") } });
+          send({ type: "LOG", level: "ok", message: ch.displayName + ": " + channelFindings.length + " findings", ts: ts() });
         }
         const advisorySummary = summaryParts.join(" ");
 
@@ -256,35 +198,38 @@ export async function POST(req: NextRequest) {
             message: `data.gov.sg (NEA): ${clusters.totalClusters} active dengue clusters, ${clusters.totalCases} cases${clusters.updated ? ` (as of ${clusters.updated})` : ""}`,
             ts: ts(),
           });
-          findings.unshift({
+          const headFinding: Finding = {
             agency: "NEA",
             stat: `${clusters.totalClusters} clusters`,
             text: `${clusters.totalClusters} active dengue clusters in Singapore (${clusters.totalCases} cases total)${clusters.largest ? `; largest at ${clusters.largest.locality} with ${clusters.largest.cases} cases` : ""}.`,
             url: "https://www.nea.gov.sg/dengue-zika/dengue/dengue-clusters",
             timeAgo: clusters.updated ? `as of ${clusters.updated}` : "live",
-          });
+          };
+          findings.unshift(headFinding);
+          ord.finding++;
+          send({ type: "FINDING", finding: headFinding });
+          persist(() => saveFinding(runId, headFinding, ord.finding));
           if (clusters.habitats.length) {
-            findings.push({
+            const habitatFinding: Finding = {
               agency: "NEA",
               stat: "breeding habitats",
               text: `Common breeding habitats in active clusters: ${clusters.habitats.join(", ")}.`,
               url: "https://www.nea.gov.sg/dengue-zika/dengue/dengue-clusters",
               timeAgo: clusters.updated ? `as of ${clusters.updated}` : "live",
-            });
+            };
+            findings.push(habitatFinding);
+            ord.finding++;
+            send({ type: "FINDING", finding: habitatFinding });
+            persist(() => saveFinding(runId, habitatFinding, ord.finding));
           }
         }
 
         send({ type: "LOG", level: "ok", message: `Extracted ${findings.length} verified findings`, ts: ts() });
-        for (const f of findings) {
-          send({ type: "FINDING", finding: f });
-          await delay(250);
-        }
         pct = 50;
         send({ type: "PROGRESS_PCT", pct });
 
-        /* ─── PHASE 2: MISINFO — 7 online-source agents in parallel ─────── */
+        /* ─── PHASE 2: MISINFO — online-source scrapers in parallel ─────── */
         send({ type: "PHASE", phase: "misinfo", label: "Cross-referencing public claims" });
-        send({ type: "LOG", level: "info", message: `Scanning ${Object.keys(ONLINE_AGENTS).length} online channels for confusion signals…`, ts: ts() });
 
         // LIVE GDELT signal — real-world coverage velocity, runs alongside.
         const spreadPromise = getSpread(spreadKeyword).then((sig) => {
@@ -300,87 +245,39 @@ export async function POST(req: NextRequest) {
           return sig;
         });
 
-        // Fire all online-channel TinyFish sessions IN PARALLEL.
-        const onlineTasks = Object.entries(ONLINE_AGENTS).map(([channelId, cfg]) => ({ channelId, cfg }));
-        const onlineDisplay: Record<string, string> = {
-          reddit: "r/singapore", hwz: "HardwareZone", mothership: "Mothership",
-          telegram: "Telegram", tiktok: "TikTok", facebook: "Facebook", ddg: "DuckDuckGo",
-        };
-        send({ type: "LOG", level: "info", message: `Firing ${onlineTasks.length} parallel TinyFish sessions: ${onlineTasks.map((t) => t.channelId.toUpperCase()).join(", ")}`, ts: ts() });
-
-        const onlineRuns: Record<string, string | undefined> = {};
+        // Fire all online-channel scrapers IN PARALLEL.
+        const onlineChannels = CHANNELS.filter((c) => c.lane === "online");
+        send({ type: "LOG", level: "info", message: "Scanning " + onlineChannels.length + " online sources in parallel…", ts: ts() });
         const onlineResults = await Promise.allSettled(
-          onlineTasks.map(({ channelId, cfg }) =>
-            runAgent({
-              url: cfg.startUrl(topic.topic),
-              goal: cfg.goal(topic.topic),
-              outputSchema: cfg.outputSchema as Record<string, unknown>,
-              onStarted: (rid) => { onlineRuns[channelId] = rid; activeTinyfishRuns.add(rid); },
-              onStreamingUrl: (url) => send({ type: "CHANNEL_STREAMING_URL", channelId, url }),
-              onProgress: (purpose) => {
-                pct = Math.min(75, pct + 1);
-                send({ type: "LOG", level: "warn", message: `${channelId.toUpperCase()}: ${purpose}`, ts: ts() });
-                send({ type: "PROGRESS_PCT", pct });
-              },
-            }).then((raw) => ({ channelId, raw })),
+          onlineChannels.map((ch) =>
+            runChannel(ch.id, topic.topic, {
+              onLog: (msg) => send({ type: "LOG", level: "warn", message: ch.id.toUpperCase() + ": " + msg, ts: ts() }),
+            }).then((r) => ({ ch, result: r })),
           ),
         );
 
-        // Last-step lookup per online channel (drives the snapshot button).
-        const onlineLastStep: Record<string, string | undefined> = {};
-        await Promise.all(
-          Object.entries(onlineRuns).map(async ([channelId, rid]) => {
-            if (!rid) return;
-            activeTinyfishRuns.delete(rid);
-            const steps = await getRunSteps(rid);
-            if (steps.length) onlineLastStep[channelId] = steps[steps.length - 1].id;
-          }),
-        );
-
-        // Pool claims from each successful session, tagging with channel + provenance.
-        type RawClaimWithProvenance = RawClaim & { tinyfishRunId?: string; tinyfishStepId?: string };
+        type RawClaimWithProvenance = RawClaim & { sourceUrl?: string };
         const rawClaims: RawClaimWithProvenance[] = [];
-        const onlineItemCount: Record<string, number> = {};
-        const onlineStatus: Record<string, "ok" | "failed"> = {};
         for (const r of onlineResults) {
           if (r.status !== "fulfilled") {
-            send({ type: "LOG", level: "warn", message: `Online-source agent failed: ${r.reason}`, ts: ts() });
+            send({ type: "LOG", level: "warn", message: "Online-source scraper failed: " + r.reason, ts: ts() });
             continue;
           }
-          const { channelId, raw } = r.value;
-          const parsed = coerceResult<{ claims?: RawClaim[] }>(raw) ?? {};
-          const channelTag = onlineDisplay[channelId] ?? channelId;
-          const channelClaims: RawClaimWithProvenance[] = (parsed.claims ?? []).map((c) => ({
-            ...c,
-            where: c.where || channelTag,
-            tinyfishRunId: onlineRuns[channelId],
-            tinyfishStepId: onlineLastStep[channelId],
+          const { ch, result } = r.value;
+          const channelClaims: RawClaimWithProvenance[] = result.items.map((it: ScrapedItem) => ({
+            text: it.text,
+            where: ch.displayName,
+            shares: it.shares,
+            sourceUrl: it.url,
           }));
           rawClaims.push(...channelClaims);
-          onlineItemCount[channelId] = channelClaims.length;
-          onlineStatus[channelId] = "ok";
-          send({ type: "LOG", level: "ok", message: `${channelTag}: ${channelClaims.length} claim${channelClaims.length === 1 ? "" : "s"} surfaced`, ts: ts() });
-        }
-        // Persist per-channel session metadata for the online lane.
-        for (const { channelId, cfg } of onlineTasks) {
-          persist(() => saveChannelSession({
-            runId,
-            channelId,
-            lane: "online",
-            tinyfishRunId: onlineRuns[channelId] ?? null,
-            lastStepId: onlineLastStep[channelId] ?? null,
-            startUrl: cfg.startUrl(topic.topic),
-            goal: cfg.goal(topic.topic),
-            status: onlineStatus[channelId] ?? "failed",
-            itemCount: onlineItemCount[channelId] ?? 0,
-            completedAt: new Date().toISOString(),
-          }));
+          send({ type: "LOG", level: "ok", message: ch.displayName + ": " + channelClaims.length + " claims surfaced", ts: ts() });
         }
         const spread = await spreadPromise;
 
-        // Map by claim text so we can re-attach the TinyFish provenance to each signal.
-        const provenanceByText = new Map<string, { tinyfishRunId?: string; tinyfishStepId?: string }>(
-          rawClaims.map((c) => [c.text, { tinyfishRunId: c.tinyfishRunId, tinyfishStepId: c.tinyfishStepId }]),
+        // Map by claim text so we can re-attach provenance to each signal.
+        const provenanceByText = new Map<string, { sourceUrl?: string }>(
+          rawClaims.map((c) => [c.text, { sourceUrl: c.sourceUrl }]),
         );
 
         // STORE ALL scraped signals as the online sources — no upfront misinfo
@@ -399,8 +296,7 @@ export async function POST(req: NextRequest) {
             where: c.where,
             shares: c.shares,
             velocity: spread?.velocityLabel,
-            tinyfishRunId: prov.tinyfishRunId,
-            tinyfishStepId: prov.tinyfishStepId,
+            sourceUrl: prov.sourceUrl,
           };
           emitted.push(claim);
           send({ type: "CLAIM", claim });
@@ -418,7 +314,8 @@ export async function POST(req: NextRequest) {
         // broadcast assessment + draft.
         send({ type: "LOG", level: "info", message: "Scanning signals + recalling prominent platform misinformation via OpenAI…", ts: ts() });
         const scrapedMisinfo = await classifyClaims(rawClaims, findings, advisorySummary);
-        const aiMisinfo = await generateFallbackClaims(topic, advisorySummary, findings, Object.values(onlineDisplay));
+        const onlineDisplayNames = onlineChannels.map((c) => c.displayName);
+        const aiMisinfo = await generateFallbackClaims(topic, advisorySummary, findings, onlineDisplayNames);
         // Store the OpenAI misinformation as claims too — shown in online sources.
         for (const m of aiMisinfo) {
           const claim: Claim = { ...m, id: `claim_${idx++}`, velocity: spread?.velocityLabel };
@@ -458,6 +355,16 @@ export async function POST(req: NextRequest) {
         const draft = await generateDraft({ ...topic, audience: assessment.audience }, advisorySummary, findings, misinfo, hazardSnapshot);
         draft.urgency = assessment.urgency; // keep the draft consistent with the verdict
         send({ type: "DRAFT", draft });
+        await saveDraft(runId, draft);
+        await saveDraftHistory({
+          runId,
+          title: draft.title,
+          body: draft.body,
+          target: draft.target,
+          urgency: draft.urgency,
+          audienceMode: "all",
+          profiles: [],
+        });
 
         pct = 100;
         send({ type: "PROGRESS_PCT", pct });
