@@ -1,5 +1,5 @@
 /* ───────────────────────────────────────────────────────────────────────────
- * CARA Authority Hub — shared types
+ * ORCA Authority Hub — shared types
  *
  * The server (/api/research) re-emits a clean, UI-shaped SSE protocol. The raw
  * TinyFish SSE (STARTED / STREAMING_URL / PROGRESS / COMPLETE / HEARTBEAT) is
@@ -63,7 +63,7 @@ export interface Claim {
   where?: string; // "WhatsApp", "community forum"
   shares?: string; // "3.2k shares"
   contradicts?: string; // which official guidance it distorts
-  analysis?: string; // CARA/OpenAI one-line assessment
+  analysis?: string; // ORCA/OpenAI one-line assessment
   fix?: string; // suggested clarification point for a broadcast
   velocity?: string; // optional GDELT-style spread label: SURGING / RISING ...
   origin?: ClaimOrigin; // (legacy) traced origin & propagation

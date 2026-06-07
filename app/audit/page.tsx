@@ -44,8 +44,8 @@ export default async function AuditPage() {
 
       <main style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 22px", display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: "var(--cara-ink)", letterSpacing: -0.3 }}>Audit Trail</h1>
-          <p style={{ fontSize: 14, color: "var(--cara-muted)", margin: "6px 0 0", lineHeight: 1.55 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: 0, color: "var(--orca-ink)", letterSpacing: -0.3 }}>Audit Trail</h1>
+          <p style={{ fontSize: 14, color: "var(--orca-muted)", margin: "6px 0 0", lineHeight: 1.55 }}>
             Run history, broadcast approvals, and verification logs.
           </p>
         </div>
@@ -54,8 +54,8 @@ export default async function AuditPage() {
           <div style={panelHeader}>Run history · {runs.length}</div>
           {runs.length === 0 ? (
             <div style={empty}>
-              <div style={{ fontSize: 14, color: "var(--cara-muted)" }}>No completed runs yet.</div>
-              <div style={{ fontSize: 12, color: "var(--cara-muted)", marginTop: 4 }}>Start a Live Scan; it will be archived here.</div>
+              <div style={{ fontSize: 14, color: "var(--orca-muted)" }}>No completed runs yet.</div>
+              <div style={{ fontSize: 12, color: "var(--orca-muted)", marginTop: 4 }}>Start a Live Scan; it will be archived here.</div>
             </div>
           ) : (
             <table style={table}>
@@ -72,9 +72,9 @@ export default async function AuditPage() {
               <tbody>
                 {runs.map((r) => (
                   <tr key={r.id}>
-                    <td style={td}><span style={{ fontWeight: 700, color: "var(--cara-ink)" }}>{r.topic}</span></td>
+                    <td style={td}><span style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{r.topic}</span></td>
                     <td style={td}><Tag color={STATUS_COLOR[r.status] ?? "#94a3b8"}>{r.status}</Tag></td>
-                    <td style={td}>{r.verdict ? <Tag color={VERDICT_COLOR[r.verdict] ?? "#94a3b8"}>{r.verdict}</Tag> : <span style={{ color: "var(--cara-muted)" }}>—</span>}</td>
+                    <td style={td}>{r.verdict ? <Tag color={VERDICT_COLOR[r.verdict] ?? "#94a3b8"}>{r.verdict}</Tag> : <span style={{ color: "var(--orca-muted)" }}>—</span>}</td>
                     <td style={td}>{fmtDate(r.created_at)}</td>
                     <td style={td}>{fmtDate(r.completed_at)}</td>
                     <td style={td}>
@@ -91,8 +91,8 @@ export default async function AuditPage() {
           <div style={panelHeader}>Broadcast approvals · {broadcasts.length}</div>
           {broadcasts.length === 0 ? (
             <div style={empty}>
-              <div style={{ fontSize: 14, color: "var(--cara-muted)" }}>No approved broadcasts yet.</div>
-              <div style={{ fontSize: 12, color: "var(--cara-muted)", marginTop: 4 }}>Approving a draft archives an immutable record here.</div>
+              <div style={{ fontSize: 14, color: "var(--orca-muted)" }}>No approved broadcasts yet.</div>
+              <div style={{ fontSize: 12, color: "var(--orca-muted)", marginTop: 4 }}>Approving a draft archives an immutable record here.</div>
             </div>
           ) : (
             <table style={table}>
@@ -113,7 +113,7 @@ export default async function AuditPage() {
                   const topic = Array.isArray(row.runs) ? row.runs[0]?.topic : row.runs?.topic;
                   return (
                     <tr key={row.id}>
-                      <td style={td}><code style={{ fontSize: 11.5, color: "var(--cara-ink)", fontWeight: 700 }}>{row.confirmation_id}</code></td>
+                      <td style={td}><code style={{ fontSize: 11.5, color: "var(--orca-ink)", fontWeight: 700 }}>{row.confirmation_id}</code></td>
                       <td style={td}>{topic ?? "—"}</td>
                       <td style={td}>{row.title}</td>
                       <td style={td}><Tag color={row.urgency === "HIGH" ? "#dc2626" : "#64748b"}>{row.urgency}</Tag></td>
@@ -145,17 +145,17 @@ function Tag({ children, color }: { children: React.ReactNode; color: string }) 
 }
 
 const navLink: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: "#cfe0ff", textDecoration: "none" };
-const panel: React.CSSProperties = { background: "#fff", border: "1px solid var(--cara-line)", borderRadius: 14, overflow: "hidden" };
+const panel: React.CSSProperties = { background: "#fff", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden" };
 const panelHeader: React.CSSProperties = {
-  padding: "13px 18px", borderBottom: "1px solid var(--cara-line)",
-  fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: "var(--cara-muted)", textTransform: "uppercase",
+  padding: "13px 18px", borderBottom: "1px solid var(--orca-line)",
+  fontSize: 11, fontWeight: 800, letterSpacing: 0.5, color: "var(--orca-muted)", textTransform: "uppercase",
 };
 const empty: React.CSSProperties = { padding: "26px 18px" };
 const table: React.CSSProperties = { width: "100%", borderCollapse: "collapse", fontSize: 13 };
 const th: React.CSSProperties = {
   padding: "10px 14px", textAlign: "left",
-  fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: "var(--cara-muted)", textTransform: "uppercase",
-  borderBottom: "1px solid var(--cara-line)",
+  fontSize: 10.5, fontWeight: 700, letterSpacing: 0.4, color: "var(--orca-muted)", textTransform: "uppercase",
+  borderBottom: "1px solid var(--orca-line)",
 };
 const td: React.CSSProperties = { padding: "11px 14px", color: "#334155", borderBottom: "1px solid #f1f5f9", verticalAlign: "middle" };
 const loadLink: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: "#002C77", textDecoration: "none" };

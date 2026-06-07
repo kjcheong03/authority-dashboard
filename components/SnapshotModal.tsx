@@ -65,10 +65,10 @@ export function SnapshotModal({
         }}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--cara-line)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "13px 18px", borderBottom: "1px solid var(--orca-line)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, color: "var(--cara-muted)" }}>SOURCE SNAPSHOT</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--cara-ink)", marginTop: 2 }}>{sourceName}</div>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, color: "var(--orca-muted)" }}>SOURCE SNAPSHOT</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--orca-ink)", marginTop: 2 }}>{sourceName}</div>
             <div style={{ fontSize: 11.5, color: "#334155", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{itemText}</div>
             {sourceUrl && (
               <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 10.5, color: "#002C77", fontWeight: 600, textDecoration: "underline" }}>
@@ -115,10 +115,10 @@ export function SnapshotModal({
         </div>
 
         {/* footer */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--cara-line)", fontSize: 10.5, color: "var(--cara-muted)", fontWeight: 600 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", borderTop: "1px solid var(--orca-line)", fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>
           <span>via TinyFish session</span>
-          {runId && <code style={{ fontSize: 10, color: "var(--cara-ink)" }}>{runId.slice(0, 8)}…</code>}
-          {stepId && <code style={{ fontSize: 10, color: "var(--cara-ink)" }}>step {stepId.slice(0, 8)}…</code>}
+          {runId && <code style={{ fontSize: 10, color: "var(--orca-ink)" }}>{runId.slice(0, 8)}…</code>}
+          {stepId && <code style={{ fontSize: 10, color: "var(--orca-ink)" }}>step {stepId.slice(0, 8)}…</code>}
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
       onClick={onClick}
       style={{
         fontSize: 11.5, fontWeight: 700, padding: "5px 11px", borderRadius: 6, border: 0, cursor: "pointer",
-        background: active ? "#fff" : "transparent", color: active ? "#002C77" : "var(--cara-muted)",
+        background: active ? "#fff" : "transparent", color: active ? "#002C77" : "var(--orca-muted)",
         boxShadow: active ? "0 1px 2px rgba(0,0,0,0.06)" : "none",
         fontFamily: "inherit",
       }}
@@ -151,6 +151,6 @@ function Toggle({ active, onClick, children }: { active: boolean; onClick: () =>
 }
 
 const closeBtn: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 8, border: "1px solid var(--cara-line)",
-  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--cara-muted)",
+  width: 28, height: 28, borderRadius: 8, border: "1px solid var(--orca-line)",
+  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--orca-muted)",
 };

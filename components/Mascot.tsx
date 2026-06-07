@@ -5,8 +5,8 @@ import { motion } from "framer-motion";
 export type MascotMood = "calm" | "cheer" | "concerned";
 
 /**
- * CARA mascot — soft hooded blob with a big white face. Ported 1:1 from the
- * BrainHack CARA app (lib/Mascot.tsx) so the Authority Dashboard wears the
+ * ORCA mascot — soft hooded blob with a big white face. Ported 1:1 from the
+ * BrainHack ORCA app (lib/Mascot.tsx) so the Authority Dashboard wears the
  * same brand creature in its top nav.
  *   calm      — slow breathing float, closed happy eyes
  *   cheer     — bouncier float, open eyes, bigger smile
@@ -35,7 +35,7 @@ export default function Mascot({
       height={size}
       viewBox="0 0 180 170"
       role="img"
-      aria-label="CARA mascot"
+      aria-label="ORCA mascot"
       xmlns="http://www.w3.org/2000/svg"
       animate={
         !animated

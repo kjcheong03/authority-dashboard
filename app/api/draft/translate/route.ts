@@ -1,9 +1,9 @@
 /* ───────────────────────────────────────────────────────────────────────────
  * POST /api/draft/translate
  *
- * Translates a broadcast headline + body into a CARA app language, preserving
+ * Translates a broadcast headline + body into a ORCA app language, preserving
  * the markdown. Used by the Broadcast panel's language dropdown to preview the
- * advisory in any of CARA's supported languages.
+ * advisory in any of ORCA's supported languages.
  *
  * Body: { title, body, lang }   →   { title, body }
  * ─────────────────────────────────────────────────────────────────────────── */

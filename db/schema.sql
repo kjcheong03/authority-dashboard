@@ -1,5 +1,5 @@
 -- ============================================================================
--- CARA Authority Dashboard — Supabase / Postgres schema
+-- ORCA Authority Dashboard — Supabase / Postgres schema
 -- One-shot. Idempotent. Safe to re-run.
 --
 -- Persists every research run so officers can:

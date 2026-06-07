@@ -62,7 +62,7 @@ export function SourceItemsModal({
         }}
       >
         {/* header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: "1px solid var(--cara-line)", background: `${accent}08` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", borderBottom: "1px solid var(--orca-line)", background: `${accent}08` }}>
           <img
             src={channel.logoUrl ?? faviconUrl(channel.domain, 128)}
             alt=""
@@ -71,9 +71,9 @@ export function SourceItemsModal({
             style={{ borderRadius: 7, flexShrink: 0 }}
           />
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, color: "var(--cara-muted)" }}>STORED INFO</div>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--cara-ink)" }}>{channel.name}</div>
-            <div style={{ fontSize: 11, color: "var(--cara-muted)", marginTop: 1 }}>
+            <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.4, color: "var(--orca-muted)" }}>STORED INFO</div>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--orca-ink)" }}>{channel.name}</div>
+            <div style={{ fontSize: 11, color: "var(--orca-muted)", marginTop: 1 }}>
               {items.length} {findings ? "finding" : "claim"}{items.length === 1 ? "" : "s"} captured from this source
             </div>
           </div>
@@ -83,7 +83,7 @@ export function SourceItemsModal({
         {/* body */}
         <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16 }}>
           {items.length === 0 ? (
-            <div style={{ padding: 32, textAlign: "center", color: "var(--cara-muted)", fontSize: 13 }}>
+            <div style={{ padding: 32, textAlign: "center", color: "var(--orca-muted)", fontSize: 13 }}>
               This source returned no items in the current run. It may have been blocked, rate-limited, or simply had nothing matching the topic.
             </div>
           ) : (
@@ -120,9 +120,9 @@ function FindingRow({ f, accent, onSnapshot }: { f: Finding; accent: string; onS
               {f.stat}
             </span>
           )}
-          {f.timeAgo && <span style={{ fontSize: 10, color: "var(--cara-muted)" }}>{f.timeAgo}</span>}
+          {f.timeAgo && <span style={{ fontSize: 10, color: "var(--orca-muted)" }}>{f.timeAgo}</span>}
         </div>
-        <div style={{ fontSize: 13.5, color: "var(--cara-ink)", lineHeight: 1.5 }}>{f.text}</div>
+        <div style={{ fontSize: 13.5, color: "var(--orca-ink)", lineHeight: 1.5 }}>{f.text}</div>
         {f.url && (
           <div style={{ marginTop: 5 }}>
             <a href={f.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: accent, textDecoration: "underline", fontWeight: 600 }}>
@@ -146,11 +146,11 @@ function ClaimRow({ c, accent, onSnapshot }: { c: Claim; accent: string; onSnaps
           <span style={{
             fontSize: 9.5, fontWeight: 800, letterSpacing: 0.4, color: "#fff",
             padding: "2px 7px", borderRadius: 4,
-            background: danger ? "var(--cara-red)" : "#64748b",
+            background: danger ? "var(--orca-red)" : "#64748b",
           }}>
             {danger ? "UNVERIFIED" : "DISCREPANCY"}
           </span>
-          {c.shares && <span style={{ fontSize: 10, color: "var(--cara-muted)" }}>{c.shares}</span>}
+          {c.shares && <span style={{ fontSize: 10, color: "var(--orca-muted)" }}>{c.shares}</span>}
         </div>
         <div style={{ fontSize: 13.5, color: danger ? "#991b1b" : "#334155", lineHeight: 1.5 }}>
           “{c.text}”
@@ -176,13 +176,13 @@ function SnapshotBtn({ onClick, disabled, accent }: { onClick: () => void; disab
     <button
       onClick={onClick}
       disabled={disabled}
-      title={disabled ? "No snapshot recorded" : "View the page CARA extracted from"}
+      title={disabled ? "No snapshot recorded" : "View the page ORCA extracted from"}
       aria-label="View source snapshot"
       style={{
         flexShrink: 0,
         width: 30, height: 30, borderRadius: 8,
         display: "grid", placeItems: "center",
-        border: "1px solid var(--cara-line)", background: "#fff",
+        border: "1px solid var(--orca-line)", background: "#fff",
         color: disabled ? "#cbd5e1" : accent,
         cursor: disabled ? "not-allowed" : "pointer",
       }}
@@ -199,11 +199,11 @@ const rowCard: React.CSSProperties = {
   display: "flex", alignItems: "flex-start", gap: 12,
   padding: "11px 13px",
   background: "#fff",
-  border: "1px solid var(--cara-line)",
+  border: "1px solid var(--orca-line)",
   borderRadius: 10,
 };
 
 const closeBtn: React.CSSProperties = {
-  width: 30, height: 30, borderRadius: 8, border: "1px solid var(--cara-line)",
-  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--cara-muted)",
+  width: 30, height: 30, borderRadius: 8, border: "1px solid var(--orca-line)",
+  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--orca-muted)",
 };

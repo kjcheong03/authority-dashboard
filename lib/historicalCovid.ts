@@ -74,7 +74,7 @@ export const covidDateBounds = {
   max: covidWeekly[covidWeekly.length - 1].date,
 };
 
-// Date the dashboard defaults to for COVID — aligned with the CARA caregiver
+// Date the dashboard defaults to for COVID — aligned with the ORCA caregiver
 // app's default (20 Nov 2023) so both surfaces open on the same week.
 export const defaultCovidDate = "2023-11-20";
 

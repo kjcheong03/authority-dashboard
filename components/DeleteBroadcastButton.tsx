@@ -38,7 +38,7 @@ export function DeleteBroadcastButton({ id, label }: { id: string; label: string
         width: 28,
         height: 28,
         borderRadius: 7,
-        border: "1px solid var(--cara-line)",
+        border: "1px solid var(--orca-line)",
         background: "#fff",
         color: busy ? "#cbd5e1" : "#dc2626",
         cursor: busy ? "default" : "pointer",

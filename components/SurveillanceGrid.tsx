@@ -180,7 +180,7 @@ function Featured({
   if (!channel) {
     return (
       <div style={featuredWrap}>
-        <div style={{ aspectRatio: "16 / 9", background: "#fff", borderRadius: 10, border: "1px solid var(--cara-line)", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 14, fontFamily: "ui-monospace,monospace" }}>
+        <div style={{ aspectRatio: "16 / 9", background: "#fff", borderRadius: 10, border: "1px solid var(--orca-line)", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 14, fontFamily: "ui-monospace,monospace" }}>
           ...
         </div>
       </div>
@@ -191,12 +191,12 @@ function Featured({
 
   return (
     <div style={featuredWrap}>
-      <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", border: `1px solid ${status === "live" ? NAVY : "var(--cara-line)"}` }}>
+      <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", border: `1px solid ${status === "live" ? NAVY : "var(--orca-line)"}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#eef2f7", borderBottom: "1px solid #eef2f0" }}>
           <img src={channel.logoUrl ?? faviconUrl(channel.domain)} alt="" width={16} height={16} style={{ borderRadius: 3 }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--cara-ink)", letterSpacing: 0.2 }}>{channel.name}</span>
-          <span style={{ fontSize: 10, color: "var(--cara-muted)", marginLeft: 4 }}>{channel.domain}</span>
-          <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--cara-muted)", fontWeight: 600 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--orca-ink)", letterSpacing: 0.2 }}>{channel.name}</span>
+          <span style={{ fontSize: 10, color: "var(--orca-muted)", marginLeft: 4 }}>{channel.domain}</span>
+          <span style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, fontSize: 10, color: "var(--orca-muted)", fontWeight: 600 }}>
             <StatusDot status={status} />
             {status === "live" ? "LIVE" : status === "done" ? "complete" : status === "failed" ? "failed" : "idle"}
           </span>
@@ -218,11 +218,11 @@ function Featured({
           ) : status === "live" ? (
             <ScanningBody />
           ) : status === "done" ? (
-            <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 13, fontFamily: "ui-monospace,monospace" }}>
+            <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 13, fontFamily: "ui-monospace,monospace" }}>
               ✓ {channel.name} scan complete · {claims.length || findings.length} signals collected
             </div>
           ) : (
-            <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 14, fontFamily: "ui-monospace,monospace" }}>
+            <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 14, fontFamily: "ui-monospace,monospace" }}>
               ...
             </div>
           )}
@@ -260,9 +260,9 @@ function LanePill({
         fontSize: 12, fontWeight: active ? 700 : 600,
         padding: "6px 13px", borderRadius: 999,
         cursor: disabled ? "not-allowed" : "pointer",
-        border: active ? "1px solid #002C77" : "1px solid var(--cara-line)",
+        border: active ? "1px solid #002C77" : "1px solid var(--orca-line)",
         background: active ? "rgba(0,44,119,.1)" : "#fff",
-        color: disabled ? "var(--cara-muted)" : active ? "#002C77" : "var(--cara-muted)",
+        color: disabled ? "var(--orca-muted)" : active ? "#002C77" : "var(--orca-muted)",
         opacity: disabled ? 0.55 : 1,
       }}
     >
@@ -274,15 +274,15 @@ function LanePill({
 
 function FeaturedGdelt({ spread, status }: { spread: Spread | null; status: Status }) {
   if (!spread) {
-    return <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 13 }}>{status === "live" ? "querying BigQuery…" : "..."}</div>;
+    return <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 13 }}>{status === "live" ? "querying BigQuery…" : "..."}</div>;
   }
   return (
     <div style={{ padding: 18, height: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
-        <div style={{ fontSize: 38, fontWeight: 800, color: "var(--cara-ink)", lineHeight: 1 }}>
+        <div style={{ fontSize: 38, fontWeight: 800, color: "var(--orca-ink)", lineHeight: 1 }}>
           {spread.totalArticles.toLocaleString()}
         </div>
-        <div style={{ fontSize: 12, color: "var(--cara-muted)" }}>articles · last 24h</div>
+        <div style={{ fontSize: 12, color: "var(--orca-muted)" }}>articles · last 24h</div>
       </div>
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
         <Stat label="Velocity" value={spread.velocityLabel} color={NAVY} />
@@ -290,7 +290,7 @@ function FeaturedGdelt({ spread, status }: { spread: Spread | null; status: Stat
         <Stat label="SG velocity" value={spread.singaporeVelocity} />
         {spread.toneLabel && <Stat label="Tone" value={spread.toneLabel} color={AMBER} />}
       </div>
-      <div style={{ marginTop: "auto", fontSize: 10, color: "var(--cara-muted)" }}>
+      <div style={{ marginTop: "auto", fontSize: 10, color: "var(--orca-muted)" }}>
         from GDELT {spread.source === "bigquery" ? "(BigQuery)" : ""}
       </div>
     </div>
@@ -308,14 +308,14 @@ function matchesDataGov(f: Finding): boolean {
 function FeaturedDataGov({ findings, status }: { findings: Finding[]; status: Status }) {
   const f = findings.find(matchesDataGov);
   if (!f) {
-    return <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 13 }}>{status === "live" ? "querying data.gov.sg…" : "..."}</div>;
+    return <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 13 }}>{status === "live" ? "querying data.gov.sg…" : "..."}</div>;
   }
   return (
     <div style={{ padding: 18, height: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 11, color: "var(--cara-muted)", fontWeight: 700, letterSpacing: 0.3 }}>{f.agency.toUpperCase()} · data.gov.sg</div>
-      <div style={{ fontSize: 28, fontWeight: 800, color: "var(--cara-ink)", lineHeight: 1 }}>{f.stat ?? "live"}</div>
+      <div style={{ fontSize: 11, color: "var(--orca-muted)", fontWeight: 700, letterSpacing: 0.3 }}>{f.agency.toUpperCase()} · data.gov.sg</div>
+      <div style={{ fontSize: 28, fontWeight: 800, color: "var(--orca-ink)", lineHeight: 1 }}>{f.stat ?? "live"}</div>
       <div style={{ fontSize: 13, color: "#334155", lineHeight: 1.45 }}>{f.text}</div>
-      <div style={{ marginTop: "auto", fontSize: 10, color: "var(--cara-muted)" }}>{f.timeAgo ?? ""} · via data.gov.sg</div>
+      <div style={{ marginTop: "auto", fontSize: 10, color: "var(--orca-muted)" }}>{f.timeAgo ?? ""} · via data.gov.sg</div>
     </div>
   );
 }
@@ -323,8 +323,8 @@ function FeaturedDataGov({ findings, status }: { findings: Finding[]; status: St
 function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-      <span style={{ fontSize: 9.5, color: "var(--cara-muted)", letterSpacing: 0.3, fontWeight: 600 }}>{label.toUpperCase()}</span>
-      <span style={{ fontSize: 13, fontWeight: 800, color: color ?? "var(--cara-ink)" }}>{value}</span>
+      <span style={{ fontSize: 9.5, color: "var(--orca-muted)", letterSpacing: 0.3, fontWeight: 600 }}>{label.toUpperCase()}</span>
+      <span style={{ fontSize: 13, fontWeight: 800, color: color ?? "var(--orca-ink)" }}>{value}</span>
     </div>
   );
 }
@@ -457,7 +457,7 @@ function Header({ channel, status }: { channel: Channel; status: Status }) {
           flex: 1,
           fontSize: 10.5,
           fontWeight: 700,
-          color: status === "idle" ? "var(--cara-muted)" : "var(--cara-ink)",
+          color: status === "idle" ? "var(--orca-muted)" : "var(--orca-ink)",
           letterSpacing: 0.1,
           overflow: "hidden",
           textOverflow: "ellipsis",
@@ -590,7 +590,7 @@ function DoneBody({ channel, findings, claims }: { channel: Channel; findings: F
     >
       <span style={{ fontSize: 16, color: DONE_GREY }}>✓</span>
       {count > 0 && (
-        <span style={{ fontSize: 10, color: "var(--cara-muted)", fontWeight: 600 }}>
+        <span style={{ fontSize: 10, color: "var(--orca-muted)", fontWeight: 600 }}>
           {count} {channel.lane === "official" ? "fact" : "claim"}
           {count === 1 ? "" : "s"}
         </span>
@@ -607,21 +607,21 @@ function agencyMatch(channelId: string, agency: string) {
 function GdeltBody({ spread, status }: { spread: Spread | null; status: Status }) {
   if (!spread) {
     return (
-      <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 10 }}>
+      <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 10 }}>
         {status === "live" ? "querying…" : "—"}
       </div>
     );
   }
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 1 }}>
-      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--cara-ink)", lineHeight: 1.1 }}>
+      <div style={{ fontSize: 15, fontWeight: 800, color: "var(--orca-ink)", lineHeight: 1.1 }}>
         {spread.totalArticles.toLocaleString()}
       </div>
-      <div style={{ fontSize: 9, color: "var(--cara-muted)" }}>articles · 24h</div>
+      <div style={{ fontSize: 9, color: "var(--orca-muted)" }}>articles · 24h</div>
       <div style={{ fontSize: 9.5, fontWeight: 800, color: NAVY, letterSpacing: 0.3 }}>
         {spread.velocityLabel}
       </div>
-      <div style={{ fontSize: 8.5, color: "var(--cara-muted)" }}>
+      <div style={{ fontSize: 8.5, color: "var(--orca-muted)" }}>
         🇸🇬 {spread.singaporeArticles} · {spread.toneLabel ?? "—"}
       </div>
     </div>
@@ -632,17 +632,17 @@ function DataGovBody({ findings, status }: { findings: Finding[]; status: Status
   const f = findings.find(matchesDataGov);
   if (!f) {
     return (
-      <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 13 }}>
+      <div style={{ height: "100%", display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 13 }}>
         {status === "live" ? "querying…" : "..."}
       </div>
     );
   }
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", justifyContent: "center", gap: 2 }}>
-      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--cara-ink)", lineHeight: 1.1 }}>
+      <div style={{ fontSize: 14, fontWeight: 800, color: "var(--orca-ink)", lineHeight: 1.1 }}>
         {f.stat ?? "live"}
       </div>
-      <div style={{ fontSize: 10, color: "var(--cara-muted)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+      <div style={{ fontSize: 10, color: "var(--orca-muted)", lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
         {f.text}
       </div>
     </div>

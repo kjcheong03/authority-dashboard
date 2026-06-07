@@ -10,7 +10,7 @@
  * as current figures.)
  * ─────────────────────────────────────────────────────────────────────────── */
 
-const UA = "CARA-AuthorityHub/1.0";
+const UA = "ORCA-AuthorityHub/1.0";
 const DENGUE_CLUSTERS_DATASET = "d_dbfabf16158d1b0e1c420627c0819168";
 
 export interface DengueClusters {

@@ -18,7 +18,7 @@ export const INGEST_START_URL = "https://duckduckgo.com";
 
 export function ingestGoal(t: TopicInput): string {
   const ctx = t.region ? ` Region / context within Singapore: ${t.region}.` : "";
-  return `You are CARA, an official public-health research agent for SINGAPORE authorities.
+  return `You are ORCA, an official public-health research agent for SINGAPORE authorities.
 Topic under validation: "${t.topic}".${ctx}
 
 Gather the CURRENT authoritative guidance on this topic, tailored to the Singapore context.
@@ -100,7 +100,7 @@ export interface IngestResult {
 export const MISINFO_START_URL = "https://duckduckgo.com";
 
 export function misinfoGoal(t: TopicInput): string {
-  return `You are CARA scanning public channels for misinformation and confusion about: "${t.topic}",
+  return `You are ORCA scanning public channels for misinformation and confusion about: "${t.topic}",
 in the SINGAPORE context.
 
 Search for claims, myths, rumours, or misconceptions Singapore residents are spreading
@@ -160,7 +160,7 @@ export async function classifyClaims(
       messages: [
         {
           role: "system",
-          content: `You are CARA's misinformation-intelligence engine for a public-health authority.
+          content: `You are ORCA's misinformation-intelligence engine for a public-health authority.
 You are given (a) the VERIFIED official guidance and (b) a list of claims circulating in public channels.
 
 For each claim decide whether it is misinformation/confusion relative to the official guidance.
@@ -222,7 +222,7 @@ export async function generateFallbackClaims(
         messages: [
           {
             role: "system",
-            content: `You are CARA's misinformation-intelligence engine for Singapore public health.
+            content: `You are ORCA's misinformation-intelligence engine for Singapore public health.
 A live scrape of public channels surfaced NO clearly-flagged misinformation for the topic below.
 Using your knowledge of REAL misinformation that has actually circulated about this topic — especially
 in the Singapore / Southeast Asian context — list the 2 to 4 MOST PROMINENT misinformation claims,
@@ -287,7 +287,7 @@ export async function traceOrigins(
       body: JSON.stringify({
         model: MODEL_CLASSIFY,
         tools: [{ type: "web_search" }],
-        input: `You are CARA tracing the ORIGIN and spread of health misinformation about "${t.topic}" in the Singapore context.
+        input: `You are ORCA tracing the ORIGIN and spread of health misinformation about "${t.topic}" in the Singapore context.
 
 For EACH claim below, use web search to trace how it spread, then return a concise propagation timeline.
 
@@ -451,7 +451,7 @@ export async function generateDraft(
       messages: [
         {
           role: "system",
-          content: `You are CARA drafting an official public-health advisory for ELDERLY CAREGIVERS in Singapore.
+          content: `You are ORCA drafting an official public-health advisory for ELDERLY CAREGIVERS in Singapore.
 
 DASHBOARD WINS (highest-priority rule — read first)
 If LIVE DASHBOARD STATS are supplied in the user message, they are the SINGLE SOURCE OF TRUTH for the Situation section. Every number, date, and trend in the Situation MUST come from the dashboard block. Do NOT use case counts, weekly totals, hospitalisation figures, or date ranges that appear in the verified findings — those findings may quote OLD MOH press releases for entirely different weeks. The dashboard reflects what the officer is looking at on screen RIGHT NOW; the findings do not.
@@ -530,7 +530,7 @@ urgency is "HIGH" or "NORMAL".`,
   }
 }
 
-/* ─── OpenAI: translate an advisory into a CARA app language ───────────────────
+/* ─── OpenAI: translate an advisory into a ORCA app language ───────────────────
  * Preserves the markdown (bold **headers**, paragraph breaks, [text](url) links)
  * so the translated advisory renders identically. Returns the original on any
  * failure or unknown language. */

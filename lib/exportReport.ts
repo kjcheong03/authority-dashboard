@@ -185,7 +185,7 @@ function generateHTML(p: ReportParams): string {
 
   return `<!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8">
-<title>CARA Advisory — ${esc(p.topic.topic).slice(0, 60)}</title>
+<title>ORCA Advisory — ${esc(p.topic.topic).slice(0, 60)}</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -284,7 +284,7 @@ function generateHTML(p: ReportParams): string {
 
 <button class="print-btn no-print" onclick="window.print()">Save as PDF</button>
 
-<div class="nav"><b>CARA</b><span>|</span><i>Authority Dashboard</i></div>
+<div class="nav"><b>ORCA</b><span>|</span><i>Authority Dashboard</i></div>
 
 <div class="head">
   <div class="eyebrow">Official Advisory Report</div>

@@ -133,10 +133,10 @@ export function SourcePickerModal({
         }}
       >
         {/* header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--cara-line)", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--orca-line)", display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--cara-ink)" }}>Pick sources for broadcast</div>
-            <div style={{ fontSize: 12, color: "var(--cara-muted)", marginTop: 2 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: "var(--orca-ink)" }}>Pick sources for broadcast</div>
+            <div style={{ fontSize: 12, color: "var(--orca-muted)", marginTop: 2 }}>
               The draft will be regenerated using only the selected sources' content.
             </div>
           </div>
@@ -172,10 +172,10 @@ export function SourcePickerModal({
         </div>
 
         {/* footer */}
-        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--cara-line)", background: "#fbfdfc", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1, fontSize: 12, color: "var(--cara-muted)", fontWeight: 600 }}>
-            Selected: <strong style={{ color: "var(--cara-ink)" }}>{factCount}</strong> facts ·{" "}
-            <strong style={{ color: "var(--cara-ink)" }}>{claimCount}</strong> claims
+        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--orca-line)", background: "#fbfdfc", display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, fontSize: 12, color: "var(--orca-muted)", fontWeight: 600 }}>
+            Selected: <strong style={{ color: "var(--orca-ink)" }}>{factCount}</strong> facts ·{" "}
+            <strong style={{ color: "var(--orca-ink)" }}>{claimCount}</strong> claims
           </div>
           {error && <div style={{ fontSize: 11, color: "#dc2626", fontWeight: 600 }}>{error}</div>}
           <button onClick={onClose} style={btnGhost} disabled={applying}>Cancel</button>
@@ -215,7 +215,7 @@ function Section({
         {label.toUpperCase()}
       </div>
       {tallies.length === 0 ? (
-        <div style={{ fontSize: 12, color: "var(--cara-muted)", padding: "10px 0" }}>{emptyText}</div>
+        <div style={{ fontSize: 12, color: "var(--orca-muted)", padding: "10px 0" }}>{emptyText}</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {tallies.map(({ channel, count }) => {
@@ -228,8 +228,8 @@ function Section({
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "8px 12px", borderRadius: isExpanded ? "10px 10px 0 0" : 10, cursor: "pointer",
-                    border: `1.5px solid ${isSelected ? accent : "var(--cara-line)"}`,
-                    borderBottom: isExpanded ? `1.5px solid ${accent}` : `1.5px solid ${isSelected ? accent : "var(--cara-line)"}`,
+                    border: `1.5px solid ${isSelected ? accent : "var(--orca-line)"}`,
+                    borderBottom: isExpanded ? `1.5px solid ${accent}` : `1.5px solid ${isSelected ? accent : "var(--orca-line)"}`,
                     background: isSelected ? `${accent}10` : "#fff",
                     textAlign: "left", fontFamily: "inherit",
                     transition: "border-color .15s, background .15s",
@@ -248,10 +248,10 @@ function Section({
                     height={18}
                     style={{ borderRadius: 4, flexShrink: 0 }}
                   />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cara-ink)", flex: 1 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--orca-ink)", flex: 1 }}>
                     {channel.name}
                   </span>
-                  <span style={{ fontSize: 11, color: "var(--cara-muted)", fontWeight: 600 }}>
+                  <span style={{ fontSize: 11, color: "var(--orca-muted)", fontWeight: 600 }}>
                     {count} {unit}{count === 1 ? "" : "s"}
                   </span>
                   <button
@@ -261,7 +261,7 @@ function Section({
                     style={{
                       display: "grid", placeItems: "center",
                       width: 22, height: 22, borderRadius: "50%",
-                      border: `1px solid ${isExpanded ? accent : "var(--cara-line)"}`,
+                      border: `1px solid ${isExpanded ? accent : "var(--orca-line)"}`,
                       background: isExpanded ? accent : "#fff",
                       color: isExpanded ? "#fff" : accent,
                       cursor: "pointer", fontSize: 11, fontWeight: 800, fontStyle: "italic",
@@ -285,7 +285,7 @@ function Section({
                       color: "#334155",
                       background: "#0c1424",
                       borderRadius: "0 0 10px 10px",
-                      border: `1.5px solid ${isSelected ? accent : "var(--cara-line)"}`,
+                      border: `1.5px solid ${isSelected ? accent : "var(--orca-line)"}`,
                       borderTop: 0,
                     }}
                   >
@@ -304,12 +304,12 @@ function Section({
 }
 
 const closeBtn: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 8, border: "1px solid var(--cara-line)",
-  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--cara-muted)",
+  width: 28, height: 28, borderRadius: 8, border: "1px solid var(--orca-line)",
+  background: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1, color: "var(--orca-muted)",
 };
 const btnGhost: React.CSSProperties = {
-  fontSize: 12.5, fontWeight: 700, color: "var(--cara-ink)", background: "#fff",
-  border: "1px solid var(--cara-line)", padding: "8px 14px", borderRadius: 8, cursor: "pointer",
+  fontSize: 12.5, fontWeight: 700, color: "var(--orca-ink)", background: "#fff",
+  border: "1px solid var(--orca-line)", padding: "8px 14px", borderRadius: 8, cursor: "pointer",
 };
 const btnPrimary: React.CSSProperties = {
   fontSize: 12.5, fontWeight: 700, color: "#fff", background: "#002C77",

@@ -44,7 +44,7 @@ export async function runAgent(opts: RunAgentOpts): Promise<unknown> {
       url: opts.url,
       goal: opts.goal,
       browser_profile: opts.browserProfile ?? "stealth",
-      api_integration: "cara-authority-hub",
+      api_integration: "orca-authority-hub",
       ...(opts.outputSchema ? { output_schema: opts.outputSchema } : {}),
       // NOTE: TinyFish has no request-time "enable screenshots" flag. Screenshots
       // are retrieved retroactively via `GET /v1/runs/{id}?screenshots=base64`.

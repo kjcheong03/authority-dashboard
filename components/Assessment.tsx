@@ -15,18 +15,18 @@ export function Assessment({ assessment: a }: { assessment: A }) {
   return (
     <motion.section
       {...reveal}
-      style={{ background: "var(--cara-panel)", border: `1px solid var(--cara-line)`, borderLeft: `4px solid ${c}`, borderRadius: 14, padding: "16px 20px" }}
+      style={{ background: "var(--orca-panel)", border: `1px solid var(--orca-line)`, borderLeft: `4px solid ${c}`, borderRadius: 14, padding: "16px 20px" }}
     >
       <div style={{ display: "flex", alignItems: "flex-start", gap: 18, flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 360px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontSize: 10.5, letterSpacing: 0.6, color: "var(--cara-muted)" }}>RECOMMENDATION</span>
+            <span style={{ fontSize: 10.5, letterSpacing: 0.6, color: "var(--orca-muted)" }}>RECOMMENDATION</span>
             <span style={{ fontSize: 22, fontWeight: 800, color: c, letterSpacing: -0.3 }}>{a.verdict}</span>
           </div>
-          <p style={{ fontSize: 13, color: "var(--cara-ink)", lineHeight: 1.5, margin: "6px 0 0" }}>{a.rationale}</p>
+          <p style={{ fontSize: 13, color: "var(--orca-ink)", lineHeight: 1.5, margin: "6px 0 0" }}>{a.rationale}</p>
         </div>
         <div style={{ textAlign: "right", fontSize: 12 }}>
-          <div style={{ color: "var(--cara-muted)" }}>Urgency <strong style={{ color: a.urgency === "HIGH" ? "var(--cara-red)" : "var(--cara-ink)" }}>{a.urgency}</strong></div>
+          <div style={{ color: "var(--orca-muted)" }}>Urgency <strong style={{ color: a.urgency === "HIGH" ? "var(--orca-red)" : "var(--orca-ink)" }}>{a.urgency}</strong></div>
         </div>
       </div>
     </motion.section>

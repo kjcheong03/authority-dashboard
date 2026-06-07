@@ -63,7 +63,7 @@ export const ONLINE_OUTPUT_SCHEMA = {
 // ── Shared goal templates ─────────────────────────────────────────────────
 
 function verifiedGoal(agencyTag: string, domain: string, scope: string, topic: string): string {
-  return `You are CARA, an official public-health research agent for Singapore.
+  return `You are ORCA, an official public-health research agent for Singapore.
 
 Validate the topic "${topic}" by extracting current guidance from ${agencyTag} (${domain}).
 ${scope}
@@ -87,7 +87,7 @@ Return ONLY JSON:
 }
 
 function onlineGoal(channelTag: string, surface: string, topic: string): string {
-  return `You are CARA scanning ${channelTag} for misinformation, rumours, or confusion about "${topic}" in the Singapore context.
+  return `You are ORCA scanning ${channelTag} for misinformation, rumours, or confusion about "${topic}" in the Singapore context.
 
 Process:
 1. You are on ${surface}. Read whatever posts/comments/results are visible there.
@@ -175,7 +175,7 @@ export const ONLINE_AGENTS: Record<string, ChannelAgentConfig> = {
   reddit: {
     startUrl: (t) =>
       `https://old.reddit.com/r/singapore/search?q=${encodeURIComponent(t)}&restrict_sr=on&sort=top&t=year&include_over_18=on`,
-    goal: (t) => `You are CARA scanning r/singapore — Singapore's largest public Reddit community — for misinformation about "${t}".
+    goal: (t) => `You are ORCA scanning r/singapore — Singapore's largest public Reddit community — for misinformation about "${t}".
 
 You are on the r/singapore SEARCH RESULTS PAGE, sorted by TOP votes over the last year. The highest-engagement (most upvoted, most commented) posts are at the top.
 
@@ -204,7 +204,7 @@ Return ONLY JSON:
   hwz: {
     startUrl: (t) =>
       `https://forums.hardwarezone.com.sg/search/?q=${encodeURIComponent(t)}&o=replies`,
-    goal: (t) => `You are CARA scanning HardwareZone (forums.hardwarezone.com.sg) — Singapore's largest mainstream discussion forum — for misinformation about "${t}".
+    goal: (t) => `You are ORCA scanning HardwareZone (forums.hardwarezone.com.sg) — Singapore's largest mainstream discussion forum — for misinformation about "${t}".
 
 You are on the HWZ search results page, ordered by REPLY COUNT so the most-discussed threads are first. The "Eat-Drink-Man-Woman" and "Current Affairs" sections in particular are known for citizen rumours.
 
@@ -361,7 +361,7 @@ Return ONLY JSON:
   ddg: {
     startUrl: (t) =>
       `https://duckduckgo.com/?q=${encodeURIComponent(t)}+singapore+(rumour+OR+myth+OR+fake+OR+hoax+OR+%22fact+check%22)`,
-    goal: (t) => `You are CARA on a DuckDuckGo open-web search for misinformation about "${t}" in Singapore. The query includes "rumour OR myth OR fake OR hoax" so the results bias toward claims being debunked or circulating.
+    goal: (t) => `You are ORCA on a DuckDuckGo open-web search for misinformation about "${t}" in Singapore. The query includes "rumour OR myth OR fake OR hoax" so the results bias toward claims being debunked or circulating.
 
 Process:
 1. Scan the top 8–10 web results. The most-linked / highest-domain-authority results sit at the top.

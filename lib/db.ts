@@ -486,7 +486,7 @@ export interface NewBroadcast {
   audienceMode: "all" | "selected";
   targetProfiles: string[];
   reachEstimate?: number;
-  /** Per-language versions ({ zh: {title, body}, ... }) — stored so the CARA app
+  /** Per-language versions ({ zh: {title, body}, ... }) — stored so the ORCA app
    *  can show each caregiver the broadcast in their selected language. */
   translations?: Record<string, { title: string; body: string }>;
 }

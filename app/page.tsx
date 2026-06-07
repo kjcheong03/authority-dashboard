@@ -239,7 +239,7 @@ export default function Page() {
           onKeyDown={(e) => { if (e.key === "Enter" && canRun && !state.running) start(topic, "live", hazardSnapshot); }}
           placeholder="…or type a custom topic"
           disabled={state.running}
-          style={{ width: 440, maxWidth: "70vw", fontSize: 13.5, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--cara-line)", background: "#fff" }}
+          style={{ width: 440, maxWidth: "70vw", fontSize: 13.5, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--orca-line)", background: "#fff" }}
         />
         {state.running ? (
           <button onClick={stop} style={btnGhost}>Stop</button>
@@ -259,7 +259,7 @@ export default function Page() {
             ⬇ Export PDF
           </button>
         )}
-        {state.error && <span style={{ fontSize: 12, color: "var(--cara-red)" }}>● {state.error}</span>}
+        {state.error && <span style={{ fontSize: 12, color: "var(--orca-red)" }}>● {state.error}</span>}
       </div>
 
       {/* ── Workspace ───────────────────────────────────────────────────── */}
@@ -296,7 +296,7 @@ export default function Page() {
                 </IntelTab>
               </div>
             </div>
-            <section style={{ background: "var(--cara-panel)", border: "1px solid var(--cara-line)", borderRadius: 14, overflow: "hidden" }}>
+            <section style={{ background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden" }}>
               {intelTab === "findings" ? (
                 <Findings findings={state.findings} selected={selectedOfficial} onToggle={toggleOfficial} />
               ) : (
@@ -321,9 +321,9 @@ export default function Page() {
   );
 }
 
-const btnPrimary: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--cara-blue)", border: 0, padding: "8px 16px", borderRadius: 8, cursor: "pointer" };
+const btnPrimary: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "#fff", background: "var(--orca-blue)", border: 0, padding: "8px 16px", borderRadius: 8, cursor: "pointer" };
 const iconBtn: React.CSSProperties = { display: "grid", placeItems: "center", width: 38, height: 38, background: "#002C77", border: 0, borderRadius: 8 };
-const btnGhost: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "var(--cara-navy)", background: "#fff", border: "1.5px solid var(--cara-navy)", padding: "8px 14px", borderRadius: 8, cursor: "pointer" };
+const btnGhost: React.CSSProperties = { fontSize: 12.5, fontWeight: 700, color: "var(--orca-navy)", background: "#fff", border: "1.5px solid var(--orca-navy)", padding: "8px 14px", borderRadius: 8, cursor: "pointer" };
 
 const PINNED_TOPICS = ["COVID-19", "Dengue"];
 
@@ -383,14 +383,14 @@ function TopicPicker({
           display: "flex", alignItems: "center", gap: 8,
           fontSize: 12.5, fontWeight: 700, fontFamily: "inherit",
           padding: "7px 11px", borderRadius: 8,
-          border: "1px solid var(--cara-line)", background: "#fff",
-          color: "var(--cara-ink)",
+          border: "1px solid var(--orca-line)", background: "#fff",
+          color: "var(--orca-ink)",
           cursor: disabled ? "not-allowed" : "pointer",
           opacity: disabled ? 0.5 : 1,
           maxWidth: 260,
         }}
       >
-        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--cara-muted)", letterSpacing: 0.4 }}>TOPIC:</span>
+        <span style={{ fontSize: 10, fontWeight: 800, color: "var(--orca-muted)", letterSpacing: 0.4 }}>TOPIC:</span>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {current || "Pick one"}
         </span>
@@ -402,7 +402,7 @@ function TopicPicker({
           style={{
             position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50,
             minWidth: 260, maxHeight: 360, overflowY: "auto",
-            background: "#fff", border: "1px solid var(--cara-line)", borderRadius: 10,
+            background: "#fff", border: "1px solid var(--orca-line)", borderRadius: 10,
             boxShadow: "0 12px 32px -12px rgba(15,39,71,0.25)",
             padding: 4, margin: 0, listStyle: "none",
           }}
@@ -455,17 +455,17 @@ function TopicItem({
           fontSize: 13, fontWeight: 600, fontFamily: "inherit",
           padding: "8px 10px", borderRadius: 6,
           border: 0, background: isCurrent ? "#eef2f7" : "transparent",
-          color: "var(--cara-ink)", cursor: "pointer",
+          color: "var(--orca-ink)", cursor: "pointer",
         }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#eef2f7"; }}
         onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = isCurrent ? "#eef2f7" : "transparent"; }}
       >
-        {pinned && <span style={{ fontSize: 11, color: "var(--cara-muted)" }}>★</span>}
+        {pinned && <span style={{ fontSize: 11, color: "var(--orca-muted)" }}>★</span>}
         <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.topic}</span>
         <span style={{
           fontSize: 9, fontWeight: 800, letterSpacing: 0.4,
           padding: "2px 6px", borderRadius: 4,
-          color: item.runId ? "#002C77" : "var(--cara-muted)",
+          color: item.runId ? "#002C77" : "var(--orca-muted)",
           background: item.runId ? "#dbeafe" : "#f1f5f9",
         }}>
           {item.runId ? "LOAD" : "NEW"}
@@ -476,7 +476,7 @@ function TopicItem({
 }
 
 const topicSectionLabel: React.CSSProperties = {
-  fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: "var(--cara-muted)",
+  fontSize: 9.5, fontWeight: 800, letterSpacing: 0.5, color: "var(--orca-muted)",
   textTransform: "uppercase", padding: "8px 10px 4px",
 };
 
@@ -511,7 +511,7 @@ function GdeltCard({
         flex: "0 1 220px",
         minWidth: 200,
         background: "#fff",
-        border: "1px solid var(--cara-line)",
+        border: "1px solid var(--orca-line)",
         borderRadius: 14,
         padding: "12px 14px",
         boxShadow: "0 2px 8px -4px rgba(15,39,71,0.12)",
@@ -520,7 +520,7 @@ function GdeltCard({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 13 }}>💬</span>
-        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, color: "var(--cara-muted)", flex: 1 }}>
+        <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, color: "var(--orca-muted)", flex: 1 }}>
           DISCUSSION RATE · {topic.toUpperCase()}
         </span>
         <button
@@ -531,8 +531,8 @@ function GdeltCard({
           style={{
             display: "grid", placeItems: "center",
             width: 22, height: 22, borderRadius: 6,
-            border: "1px solid var(--cara-line)", background: "#fff",
-            color: "var(--cara-muted)", cursor: refreshing ? "default" : "pointer",
+            border: "1px solid var(--orca-line)", background: "#fff",
+            color: "var(--orca-muted)", cursor: refreshing ? "default" : "pointer",
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? "spin .8s linear infinite" : undefined }}>
@@ -545,16 +545,16 @@ function GdeltCard({
       {spread ? (
         <>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: "var(--cara-ink)", lineHeight: 1 }}>
+            <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: "var(--orca-ink)", lineHeight: 1 }}>
               {sgMonthly.toLocaleString("en-SG")}
             </span>
-            <span style={{ fontSize: 10.5, color: "var(--cara-muted)", fontWeight: 600 }}>last 30d</span>
+            <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>last 30d</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>{sgVelocity}</div>
           {timeline.length >= 2 && <SgBars timeline={timeline} color={vColor} />}
         </>
       ) : (
-        <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 12 }}>
+        <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 12 }}>
           {refreshing ? "querying…" : "no data"}
         </div>
       )}
@@ -615,7 +615,7 @@ function DatePickerTrigger({
         style={{
           display: "inline-flex", alignItems: "center", gap: 4,
           fontSize: 10.5, fontWeight: 600,
-          color: disabled ? "var(--cara-muted)" : "#002C77",
+          color: disabled ? "var(--orca-muted)" : "#002C77",
           background: "transparent", border: "none", padding: 0,
           fontFamily: "inherit",
           cursor: disabled ? "not-allowed" : "pointer",
@@ -686,7 +686,7 @@ function HazardCard({
   onRefreshDiscussion?: () => Promise<void>;
 }) {
   const trendChar = trend === "up" ? "▲" : trend === "down" ? "▼" : "—";
-  const trendColor = trend === "up" ? "#dc2626" : trend === "down" ? "#16a34a" : "var(--cara-muted)";
+  const trendColor = trend === "up" ? "#dc2626" : trend === "down" ? "#16a34a" : "var(--orca-muted)";
   return (
     <div
       role="button"
@@ -702,7 +702,7 @@ function HazardCard({
         maxWidth: 380,
         textAlign: "left",
         background: "#fff",
-        border: active ? "1.5px solid #002C77" : "1px solid var(--cara-line)",
+        border: active ? "1.5px solid #002C77" : "1px solid var(--orca-line)",
         borderRadius: 14,
         padding: "16px 18px",
         cursor: disabled ? "not-allowed" : "pointer",
@@ -721,7 +721,7 @@ function HazardCard({
       {/* top row: dot + label + tier badge */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ width: 9, height: 9, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--cara-ink)", letterSpacing: -0.1 }}>
+        <span style={{ fontSize: 14, fontWeight: 800, color: "var(--orca-ink)", letterSpacing: -0.1 }}>
           {label}
         </span>
         <span style={{
@@ -736,10 +736,10 @@ function HazardCard({
 
       {/* big stat */}
       <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-        <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, color: "var(--cara-ink)", lineHeight: 1 }}>
+        <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, color: "var(--orca-ink)", lineHeight: 1 }}>
           {statValue}
         </span>
-        <span style={{ fontSize: 13, color: "var(--cara-muted)", fontWeight: 500 }}>
+        <span style={{ fontSize: 13, color: "var(--orca-muted)", fontWeight: 500 }}>
           {statUnit}
         </span>
         {typeof trendPct === "number" && (
@@ -762,7 +762,7 @@ function HazardCard({
       </div>
 
       {/* footer: source · date picker (when present) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--cara-muted)", fontWeight: 600, letterSpacing: 0.2, paddingTop: 4, borderTop: "1px solid #eef2f0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600, letterSpacing: 0.2, paddingTop: 4, borderTop: "1px solid #eef2f0" }}>
         <span>{sourceLabel}</span>
         {dateInput && <span style={{ opacity: 0.5 }}>·</span>}
         {dateInput}
@@ -812,10 +812,10 @@ function DiscussionStrip({
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--cara-ink)" }}>
+        <span style={{ fontSize: 13, fontWeight: 800, color: "var(--orca-ink)" }}>
           {spread ? monthly.toLocaleString("en-SG") : "—"}
         </span>
-        <span style={{ fontSize: 10.5, color: "var(--cara-muted)", fontWeight: 600 }}>
+        <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>
           mentions · 30d
         </span>
         <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>
@@ -831,8 +831,8 @@ function DiscussionStrip({
               marginLeft: "auto",
               display: "grid", placeItems: "center",
               width: 20, height: 20, borderRadius: 5,
-              border: "1px solid var(--cara-line)", background: "#fff",
-              color: "var(--cara-muted)", cursor: refreshing ? "default" : "pointer",
+              border: "1px solid var(--orca-line)", background: "#fff",
+              color: "var(--orca-muted)", cursor: refreshing ? "default" : "pointer",
             }}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? "spin .8s linear infinite" : undefined }}>
@@ -846,7 +846,7 @@ function DiscussionStrip({
       {spread && timeline.length >= 2 ? (
         <SgBars timeline={timeline} color={vColor} />
       ) : (
-        <div style={{ height: 28, display: "grid", placeItems: "center", color: "var(--cara-muted)", fontSize: 10 }}>
+        <div style={{ height: 28, display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 10 }}>
           {refreshing ? "querying…" : "no data"}
         </div>
       )}
@@ -860,9 +860,9 @@ function IntelTab({ children, active, onClick }: { children: React.ReactNode; ac
       onClick={onClick}
       style={{
         font: "inherit", fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 999, cursor: "pointer",
-        border: active ? "1px solid #002C77" : "1px solid var(--cara-line)",
+        border: active ? "1px solid #002C77" : "1px solid var(--orca-line)",
         background: active ? "rgba(0,44,119,.1)" : "#fff",
-        color: active ? "#002C77" : "var(--cara-muted)",
+        color: active ? "#002C77" : "var(--orca-muted)",
       }}
     >
       {children}

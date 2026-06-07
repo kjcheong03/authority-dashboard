@@ -3,7 +3,7 @@
  *
  * For a flagged claim, returns existing professional fact-checks (ClaimReview):
  * who reviewed it, their rating ("False" / "Misleading"), and a link. This turns
- * CARA's own classification into authoritatively corroborated misinformation.
+ * ORCA's own classification into authoritatively corroborated misinformation.
  *
  * Needs a free Google Cloud API key in GOOGLE_FACTCHECK_API_KEY. Degrades to []
  * when absent or on error.

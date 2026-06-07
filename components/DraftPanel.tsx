@@ -48,7 +48,7 @@ const PROFILES = ["Diabetes", "Heart", "Respiratory", "Dementia", "Kidney", "Imm
 const FONT = "var(--font-rounded), ui-sans-serif, system-ui, sans-serif";
 const SELECTED = "#334155";
 
-// CARA app languages — the broadcast is generated/sent in every one of these.
+// ORCA app languages — the broadcast is generated/sent in every one of these.
 type Lang = "en" | "zh" | "ms" | "id" | "tl" | "my";
 const LANGS: { code: Lang; label: string }[] = [
   { code: "en", label: "English" },
@@ -115,14 +115,14 @@ export function DraftPanel({
   const [sending, setSending] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
-  // English is the editable source; all other CARA languages are pre-translated
+  // English is the editable source; all other ORCA languages are pre-translated
   // (cached) so switching the dropdown is instant — never a per-switch spinner.
   const [lang, setLang] = useState<Lang>("en");
   const [translations, setTranslations] = useState<Record<string, Translation>>({});
   const [translating, setTranslating] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
-  // Translate the current English content into ALL CARA languages, in parallel.
+  // Translate the current English content into ALL ORCA languages, in parallel.
   // Returns the map so callers (approve) can use it without waiting for state.
   const translateAll = async (title: string, bodyText: string): Promise<Record<string, Translation>> => {
     if (!title && !bodyText) return {};
@@ -250,7 +250,7 @@ export function DraftPanel({
 
   return (
     <section style={panel}>
-      <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 16px", borderBottom: "1px solid var(--cara-line)" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 16px", borderBottom: "1px solid var(--orca-line)" }}>
         <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>Broadcast</h2>
         <select
           value={lang}
@@ -259,8 +259,8 @@ export function DraftPanel({
           aria-label="Broadcast language"
           title="Preview / send language"
           style={{
-            borderRadius: 8, border: "1px solid var(--cara-line)", padding: "6px 8px",
-            fontSize: 12.5, fontFamily: FONT, color: "var(--cara-ink)", background: "#fff",
+            borderRadius: 8, border: "1px solid var(--orca-line)", padding: "6px 8px",
+            fontSize: 12.5, fontFamily: FONT, color: "var(--orca-ink)", background: "#fff",
             cursor: busy ? "default" : "pointer", maxWidth: 160, opacity: busy ? 0.6 : 1,
           }}
         >
@@ -276,8 +276,8 @@ export function DraftPanel({
           style={{
             display: "grid", placeItems: "center",
             width: 30, height: 30, borderRadius: 8,
-            border: "1px solid var(--cara-line)", background: "#fff",
-            color: "var(--cara-ink)", cursor: busy ? "default" : "pointer",
+            border: "1px solid var(--orca-line)", background: "#fff",
+            color: "var(--orca-ink)", cursor: busy ? "default" : "pointer",
             opacity: !runId || busy || (findings.length === 0 && claims.length === 0) ? 0.45 : 1,
           }}
         >
@@ -291,8 +291,8 @@ export function DraftPanel({
 
       <div style={{ padding: 16 }}>
         {!isEn && (
-          <div style={{ fontSize: 11, color: "var(--cara-muted)", marginBottom: 8, lineHeight: 1.5 }}>
-            Auto-translated · sent to caregivers using this language in the CARA app.
+          <div style={{ fontSize: 11, color: "var(--orca-muted)", marginBottom: 8, lineHeight: 1.5 }}>
+            Auto-translated · sent to caregivers using this language in the ORCA app.
           </div>
         )}
 
@@ -302,13 +302,13 @@ export function DraftPanel({
           readOnly={!isEn}
           placeholder="Headline"
           style={{
-            width: "100%", borderRadius: 10, border: "1px solid var(--cara-line)", padding: "11px 13px",
-            fontSize: 14, fontWeight: 500, fontFamily: FONT, color: "var(--cara-ink)",
+            width: "100%", borderRadius: 10, border: "1px solid var(--orca-line)", padding: "11px 13px",
+            fontSize: 14, fontWeight: 500, fontFamily: FONT, color: "var(--orca-ink)",
             background: isEn ? "#fff" : "#f8fafc", marginBottom: 10,
           }}
         />
-        <div style={{ border: "1px solid var(--cara-line)", borderRadius: 10, background: "#fff", overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid var(--cara-line)" }}>
+        <div style={{ border: "1px solid var(--orca-line)", borderRadius: 10, background: "#fff", overflow: "hidden" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid var(--orca-line)" }}>
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
@@ -316,9 +316,9 @@ export function DraftPanel({
               disabled={!isEn}
               title="Bold (Ctrl/Cmd+B)"
               style={{
-                width: 26, height: 26, borderRadius: 6, border: "1px solid var(--cara-line)",
+                width: 26, height: 26, borderRadius: 6, border: "1px solid var(--orca-line)",
                 background: "#fff", cursor: isEn ? "pointer" : "default", fontWeight: 800, fontSize: 13, fontFamily: FONT,
-                color: "var(--cara-ink)", lineHeight: 1, opacity: isEn ? 1 : 0.4,
+                color: "var(--orca-ink)", lineHeight: 1, opacity: isEn ? 1 : 0.4,
               }}
             >
               B
@@ -332,18 +332,18 @@ export function DraftPanel({
               onInput={syncBody}
               onKeyDown={onEditorKeyDown}
               data-placeholder="Message…"
-              className="cara-editor"
+              className="orca-editor"
               style={{
                 minHeight: 120, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
-                fontFamily: FONT, color: "var(--cara-ink)", outline: "none",
+                fontFamily: FONT, color: "var(--orca-ink)", outline: "none",
               }}
             />
           ) : (
             <div
-              className="cara-editor"
+              className="orca-editor"
               style={{
                 minHeight: 120, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
-                fontFamily: FONT, color: "var(--cara-ink)", background: "#f8fafc",
+                fontFamily: FONT, color: "var(--orca-ink)", background: "#f8fafc",
               }}
               dangerouslySetInnerHTML={{ __html: mdToHtml(previewBody) }}
             />
@@ -356,7 +356,7 @@ export function DraftPanel({
         </div>
 
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--cara-muted)", letterSpacing: 0.4, marginBottom: 8 }}>SEND TO</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--orca-muted)", letterSpacing: 0.4, marginBottom: 8 }}>SEND TO</div>
           <div style={{ display: "flex", gap: 8 }}>
             <Pill active={audienceMode === "all"} onClick={() => { setAudienceMode("all"); setProfiles([]); }}>
               All caregivers
@@ -376,9 +376,9 @@ export function DraftPanel({
                     onClick={() => toggleProfile(p)}
                     style={{
                       fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 999, cursor: "pointer",
-                      border: `1px solid ${on ? SELECTED : "var(--cara-line)"}`,
+                      border: `1px solid ${on ? SELECTED : "var(--orca-line)"}`,
                       background: on ? SELECTED : "#fff",
-                      color: on ? "#fff" : "var(--cara-muted)",
+                      color: on ? "#fff" : "var(--orca-muted)",
                     }}
                   >
                     {p}
@@ -404,12 +404,12 @@ export function DraftPanel({
           </button>
         </div>
         {confirmation && (
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--cara-muted)" }}>
-            Confirmation: <code style={{ fontWeight: 700, color: "var(--cara-ink)" }}>{confirmation}</code>
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--orca-muted)" }}>
+            Confirmation: <code style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{confirmation}</code>
           </div>
         )}
         {!runId && draft && (
-          <div style={{ marginTop: 8, fontSize: 11, color: "var(--cara-muted)" }}>
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--orca-muted)" }}>
             No run in progress to broadcast against.
           </div>
         )}
@@ -425,9 +425,9 @@ function Pill({ children, active, onClick }: { children: React.ReactNode; active
       onClick={onClick}
       style={{
         font: "inherit", fontSize: 12.5, padding: "6px 14px", borderRadius: 999, cursor: "pointer",
-        border: `1px solid ${active ? SELECTED : "var(--cara-line)"}`,
+        border: `1px solid ${active ? SELECTED : "var(--orca-line)"}`,
         background: active ? "rgba(51,65,85,.1)" : "#fff",
-        color: active ? SELECTED : "var(--cara-muted)",
+        color: active ? SELECTED : "var(--orca-muted)",
         fontWeight: active ? 700 : 600,
       }}
     >
@@ -436,4 +436,4 @@ function Pill({ children, active, onClick }: { children: React.ReactNode; active
   );
 }
 
-const panel: React.CSSProperties = { background: "var(--cara-panel)", border: "1px solid var(--cara-line)", borderRadius: 14, overflow: "hidden" };
+const panel: React.CSSProperties = { background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden" };

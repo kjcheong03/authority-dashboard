@@ -1,26 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --cara-navy: #0f2747;
-  --cara-blue: #1d4ed8;
-  --cara-teal: #0fae8e;
-  --cara-green: #16a34a;
-  --cara-forest: #002C77;
-  --cara-red: #dc2626;
-  --cara-amber: #b45309;
-  --cara-bg: #eef4ff;
-  --cara-panel: #ffffff;
-  --cara-line: #8c9d96;
-  --cara-ink: #0f2747;
-  --cara-muted: #6b7c8c;
+  --orca-navy: #0f2747;
+  --orca-blue: #1d4ed8;
+  --orca-teal: #0fae8e;
+  --orca-green: #16a34a;
+  --orca-forest: #002C77;
+  --orca-red: #dc2626;
+  --orca-amber: #b45309;
+  --orca-bg: #eef4ff;
+  --orca-panel: #ffffff;
+  --orca-line: #8c9d96;
+  --orca-ink: #0f2747;
+  --orca-muted: #6b7c8c;
 }
 
 html,
 body {
   padding: 0;
   margin: 0;
-  background: var(--cara-bg);
-  color: var(--cara-ink);
+  background: var(--orca-bg);
+  color: var(--orca-ink);
   font-family: var(--font-rounded), "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
   font-weight: 500;
   -webkit-font-smoothing: antialiased;
@@ -92,16 +92,16 @@ body {
 }
 
 /* rich body editor — placeholder when empty (contentEditable has none natively) */
-.cara-editor:empty::before {
+.orca-editor:empty::before {
   content: attr(data-placeholder);
-  color: var(--cara-muted);
+  color: var(--orca-muted);
   pointer-events: none;
 }
-.cara-editor strong {
+.orca-editor strong {
   font-weight: 800;
 }
-.cara-editor a {
-  color: var(--cara-teal);
+.orca-editor a {
+  color: var(--orca-teal);
   text-decoration: underline;
 }
 
@@ -113,7 +113,7 @@ body {
 .cursor::after {
   content: "▋";
   animation: blink 1s steps(1) infinite;
-  color: var(--cara-teal);
+  color: var(--orca-teal);
   margin-left: 2px;
 }
 

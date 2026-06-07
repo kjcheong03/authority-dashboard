@@ -106,7 +106,7 @@ function SourceTile({
       }}
       style={{
         background: isSelected ? `${accent}10` : "#fff",
-        border: `1.5px solid ${isSelected ? accent : "var(--cara-line)"}`,
+        border: `1.5px solid ${isSelected ? accent : "var(--orca-line)"}`,
         borderRadius: 12,
         overflow: "hidden",
         cursor: "pointer",
@@ -127,7 +127,7 @@ function SourceTile({
             position: "absolute", top: 8, right: 8,
             display: "grid", placeItems: "center",
             width: 22, height: 22, borderRadius: "50%",
-            border: `1px solid ${hasData ? accent : "var(--cara-line)"}`,
+            border: `1px solid ${hasData ? accent : "var(--orca-line)"}`,
             background: "#fff",
             color: hasData ? accent : "#cbd5e1",
             cursor: hasData ? "pointer" : "not-allowed",
@@ -144,11 +144,11 @@ function SourceTile({
           height={36}
           style={{ borderRadius: 8 }}
         />
-        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--cara-ink)", textAlign: "center" }}>
+        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--orca-ink)", textAlign: "center" }}>
           {channel.name}
         </div>
         {hasData && (
-          <div style={{ fontSize: 10, color: "var(--cara-muted)", fontWeight: 600 }}>
+          <div style={{ fontSize: 10, color: "var(--orca-muted)", fontWeight: 600 }}>
             {items.length} finding{items.length === 1 ? "" : "s"}
           </div>
         )}

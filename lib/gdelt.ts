@@ -29,7 +29,7 @@ interface Article {
   sourcecountry?: string;
 }
 
-const UA = "CARA-AuthorityHub/1.0 (public-health research demo)";
+const UA = "ORCA-AuthorityHub/1.0 (public-health research demo)";
 const SPACING_MS = 5500; // honour the 1-request-per-5-seconds rule
 const CACHE_MS = 30 * 60 * 1000; // reuse a good result for 30 min on failure
 const cache = new Map<string, { at: number; sig: SpreadSignal }>();

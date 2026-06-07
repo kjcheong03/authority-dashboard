@@ -51,7 +51,7 @@ export function ResearchAgent({
 // inside, behind the mini tile row only (Featured stays on the white panel).
 const surveillancePanel: React.CSSProperties = {
   background: "#ffffff",
-  border: "1px solid var(--cara-line)",
+  border: "1px solid var(--orca-line)",
   borderRadius: 14,
   padding: "14px 14px 12px",
 };
