@@ -233,8 +233,8 @@ function Featured({
 }
 
 const featuredWrap: React.CSSProperties = {
-  // Span the full workspace width. The page used to feel half-empty on either
-  // side of the centered 600px tile; now the tile fills the available space.
+  maxWidth: 600,
+  margin: "0 auto",
   width: "100%",
 };
 
