@@ -289,7 +289,7 @@ export function DraftPanel({
         </button>
       </header>
 
-      <div style={{ padding: 16 }}>
+      <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {!isEn && (
           <div style={{ fontSize: 11, color: "var(--orca-muted)", marginBottom: 8, lineHeight: 1.5 }}>
             Auto-translated · sent to caregivers using this language in the ORCA app.
@@ -307,8 +307,8 @@ export function DraftPanel({
             background: isEn ? "#fff" : "#f8fafc", marginBottom: 10,
           }}
         />
-        <div style={{ border: "1px solid var(--orca-line)", borderRadius: 10, background: "#fff", overflow: "hidden" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid var(--orca-line)" }}>
+        <div style={{ border: "1px solid var(--orca-line)", borderRadius: 10, background: "#fff", overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", minHeight: 240 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", borderBottom: "1px solid var(--orca-line)", flexShrink: 0 }}>
             <button
               type="button"
               onMouseDown={(e) => e.preventDefault()}
@@ -334,7 +334,8 @@ export function DraftPanel({
               data-placeholder="Message…"
               className="orca-editor"
               style={{
-                minHeight: 120, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
+                flex: 1, overflowY: "auto",
+                minHeight: 180, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
                 fontFamily: FONT, color: "var(--orca-ink)", outline: "none",
               }}
             />
@@ -342,7 +343,8 @@ export function DraftPanel({
             <div
               className="orca-editor"
               style={{
-                minHeight: 120, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
+                flex: 1, overflowY: "auto",
+                minHeight: 180, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
                 fontFamily: FONT, color: "var(--orca-ink)", background: "#f8fafc",
               }}
               dangerouslySetInnerHTML={{ __html: mdToHtml(previewBody) }}
@@ -436,4 +438,8 @@ function Pill({ children, active, onClick }: { children: React.ReactNode; active
   );
 }
 
-const panel: React.CSSProperties = { background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden" };
+const panel: React.CSSProperties = {
+  background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14,
+  overflow: "hidden", boxShadow: "var(--orca-shadow-sm)",
+  height: "100%", display: "flex", flexDirection: "column",
+};

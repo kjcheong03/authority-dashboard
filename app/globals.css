@@ -10,9 +10,17 @@
   --orca-amber: #b45309;
   --orca-bg: #eef4ff;
   --orca-panel: #ffffff;
-  --orca-line: #8c9d96;
+  /* Outline tokens — `--orca-line` is the default soft outline used on every
+     card and tile. `--orca-line-strong` is reserved for high-contrast UI
+     separators (e.g. picker dropdowns) where we explicitly want a stronger
+     edge. Lighter outlines feel more formal. */
+  --orca-line: #e2e8f0;
+  --orca-line-strong: #cbd5e1;
   --orca-ink: #0f2747;
   --orca-muted: #6b7c8c;
+  /* Subtle shadow tokens for the formal/elevated card look */
+  --orca-shadow-sm: 0 1px 2px rgba(15, 39, 71, 0.04), 0 1px 3px rgba(15, 39, 71, 0.06);
+  --orca-shadow-md: 0 4px 6px -2px rgba(15, 39, 71, 0.04), 0 10px 24px -8px rgba(15, 39, 71, 0.10);
 }
 
 html,
@@ -39,11 +47,13 @@ body {
 }
 .workspace-grid {
   display: grid;
-  /* Sources column thinner; Broadcast column wider so the draft editor has room
-     to breathe. */
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.4fr);
+  /* Sources column kept thin so the Broadcast container gets the most room —
+     the draft editor + headline + recipient controls need the breathing space. */
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.8fr);
   gap: 16px;
-  align-items: start;
+  /* Equal-height columns so the Sources card lines up with the (taller)
+     Broadcast card. Without this, Sources ends short, leaving a dead zone. */
+  align-items: stretch;
 }
 /* tablet & phone: stack the two columns */
 @media (max-width: 900px) {

@@ -133,7 +133,7 @@ export function SurveillanceGrid({
         spread={spread}
         running={running}
       />
-      <div style={{ background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: 8 }}>
+      <div style={{ background: "#f8fafc", border: "1px solid var(--orca-line)", borderRadius: 12, padding: 10, boxShadow: "var(--orca-shadow-sm)" }}>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeLane}
@@ -191,8 +191,8 @@ function Featured({
 
   return (
     <div style={featuredWrap}>
-      <div style={{ background: "#fff", borderRadius: 10, overflow: "hidden", border: `1px solid ${status === "live" ? NAVY : "var(--orca-line)"}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#eef2f7", borderBottom: "1px solid #eef2f0" }}>
+      <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", border: `1px solid ${status === "live" ? NAVY : "var(--orca-line)"}`, boxShadow: "var(--orca-shadow-md)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#f8fafc", borderBottom: "1px solid var(--orca-line)" }}>
           <img src={channel.logoUrl ?? faviconUrl(channel.domain)} alt="" width={16} height={16} style={{ borderRadius: 3 }} />
           <span style={{ fontSize: 12, fontWeight: 700, color: "var(--orca-ink)", letterSpacing: 0.2 }}>{channel.name}</span>
           <span style={{ fontSize: 10, color: "var(--orca-muted)", marginLeft: 4 }}>{channel.domain}</span>
@@ -233,8 +233,8 @@ function Featured({
 }
 
 const featuredWrap: React.CSSProperties = {
-  maxWidth: 600,
-  margin: "0 auto",
+  // Span the full workspace width. The page used to feel half-empty on either
+  // side of the centered 600px tile; now the tile fills the available space.
   width: "100%",
 };
 

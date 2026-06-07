@@ -279,7 +279,7 @@ export default function Page() {
 
         {/* Intel tabs beside the broadcast container */}
         <div className="workspace-grid">
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, height: "100%" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
               <TopicPicker
                 current={topicText || "—"}
@@ -287,7 +287,7 @@ export default function Page() {
                 disabled={state.running}
                 onPick={pickTopic}
               />
-              <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+              <div style={{ display: "flex", gap: 6 }}>
                 <IntelTab active={intelTab === "findings"} onClick={() => setIntelTab("findings")}>
                   Verified Sources{state.findings.length > 0 ? ` · ${state.findings.length}` : ""}
                 </IntelTab>
@@ -296,7 +296,7 @@ export default function Page() {
                 </IntelTab>
               </div>
             </div>
-            <section style={{ background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden" }}>
+            <section style={{ background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--orca-shadow-sm)", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
               {intelTab === "findings" ? (
                 <Findings findings={state.findings} selected={selectedOfficial} onToggle={toggleOfficial} />
               ) : (
@@ -508,18 +508,14 @@ function GdeltCard({
   return (
     <div
       style={{
-        flex: "0 1 220px",
-        minWidth: 200,
-        background: "#fff",
-        border: "1px solid var(--orca-line)",
-        borderRadius: 14,
-        padding: "12px 14px",
-        boxShadow: "0 2px 8px -4px rgba(15,39,71,0.12)",
-        display: "flex", flexDirection: "column", gap: 8,
+        // Sits inside the HazardCard's right column with a vertical divider on
+        // the parent — no chrome of its own, so it reads as the right half of
+        // the same card rather than a nested panel.
+        flex: 1, width: "100%", minWidth: 0,
+        display: "flex", flexDirection: "column", gap: 6,
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <span style={{ fontSize: 13 }}>💬</span>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, color: "var(--orca-muted)", flex: 1 }}>
           DISCUSSION RATE · {topic.toUpperCase()}
         </span>
@@ -551,7 +547,11 @@ function GdeltCard({
             <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>last 30d</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>{sgVelocity}</div>
-          {timeline.length >= 2 && <SgBars timeline={timeline} color={vColor} />}
+          {timeline.length >= 2 && (
+            <div style={{ flex: 1, minHeight: 28, display: "flex", alignItems: "stretch" }}>
+              <SgBars timeline={timeline} color={vColor} />
+            </div>
+          )}
         </>
       ) : (
         <div style={{ flex: 1, display: "grid", placeItems: "center", color: "var(--orca-muted)", fontSize: 12 }}>
@@ -566,8 +566,11 @@ function SgBars({ timeline, color }: { timeline: Array<{ date: string; sg: numbe
   const values = timeline.map((p) => p.sg);
   const max = Math.max(...values, 1);
   const bw = 100 / values.length;
+  // preserveAspectRatio: "none" lets the svg vertically stretch to fill its
+  // parent container, so the bars chart eats the empty space that used to sit
+  // below it inside the discussion strip.
   return (
-    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: 28, display: "block" }} aria-label="30-day SG mentions">
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }} aria-label="30-day SG mentions">
       {values.map((v, i) => {
         const h = Math.max(1.2, (v / max) * 26);
         return <rect key={i} x={i * bw} y={28 - h} width={bw * 0.7} height={h} fill={color} opacity={i === values.length - 1 ? 1 : 0.6} />;
@@ -698,27 +701,28 @@ function HazardCard({
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick(); }
       }}
       style={{
-        flex: "1 1 300px",
-        maxWidth: 380,
+        // Take half the available width so two cards span the whole row.
+        flex: "1 1 0",
+        minWidth: 320,
         textAlign: "left",
         background: "#fff",
         border: active ? "1.5px solid #002C77" : "1px solid var(--orca-line)",
         borderRadius: 14,
-        padding: "16px 18px",
+        padding: "16px 20px",
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.6 : 1,
         boxShadow: active
-          ? "0 6px 18px -8px rgba(0,44,119,0.4)"
-          : "0 2px 8px -4px rgba(15,39,71,0.12)",
+          ? "0 6px 18px -8px rgba(0,44,119,0.4), var(--orca-shadow-sm)"
+          : "var(--orca-shadow-sm)",
         transition: "border-color .2s, box-shadow .2s, transform .12s",
         fontFamily: "inherit",
         outline: "none",
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 12,
       }}
     >
-      {/* top row: dot + label + tier badge */}
+      {/* top row: dot + label + tier badge — spans the whole card */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <span style={{ width: 9, height: 9, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
         <span style={{ fontSize: 14, fontWeight: 800, color: "var(--orca-ink)", letterSpacing: -0.1 }}>
@@ -734,48 +738,69 @@ function HazardCard({
         </span>
       </div>
 
-      {/* big stat */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-        <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, color: "var(--orca-ink)", lineHeight: 1 }}>
-          {statValue}
-        </span>
-        <span style={{ fontSize: 13, color: "var(--orca-muted)", fontWeight: 500 }}>
-          {statUnit}
-        </span>
-        {typeof trendPct === "number" && (
-          <span style={{
-            marginLeft: "auto",
-            display: "inline-flex", alignItems: "center", gap: 4,
-            fontSize: 12, fontWeight: 800,
-            padding: "3px 8px", borderRadius: 999,
-            background: `${trendColor}15`, color: trendColor,
+      {/* two-column body: stats on the left, GDELT discussion strip on the right */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: discussion !== undefined ? "minmax(0, 1.05fr) minmax(0, 1fr)" : "1fr",
+          gap: 18,
+          alignItems: "stretch",
+        }}
+      >
+        {/* LEFT — the headline stat block */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+            <span style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, color: "var(--orca-ink)", lineHeight: 1 }}>
+              {statValue}
+            </span>
+            <span style={{ fontSize: 13, color: "var(--orca-muted)", fontWeight: 500 }}>
+              {statUnit}
+            </span>
+            {typeof trendPct === "number" && (
+              <span style={{
+                marginLeft: "auto",
+                display: "inline-flex", alignItems: "center", gap: 4,
+                fontSize: 12, fontWeight: 800,
+                padding: "3px 8px", borderRadius: 999,
+                background: `${trendColor}15`, color: trendColor,
+              }}>
+                <span style={{ fontSize: 9 }}>{trendChar}</span>
+                {Math.abs(trendPct)}%
+              </span>
+            )}
+          </div>
+          <div style={{ fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>
+            {subtitle}
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600, letterSpacing: 0.2,
+            marginTop: "auto", paddingTop: 8, borderTop: "1px solid #eef2f0",
           }}>
-            <span style={{ fontSize: 9 }}>{trendChar}</span>
-            {Math.abs(trendPct)}%
-          </span>
+            <span>{sourceLabel}</span>
+            {dateInput && <span style={{ opacity: 0.5 }}>·</span>}
+            {dateInput}
+          </div>
+        </div>
+
+        {/* RIGHT — GDELT discussion strip. A thin vertical divider sits
+            between the two columns; the strip itself is borderless inside its
+            cell so it reads as one half of the card rather than a sub-panel. */}
+        {discussion !== undefined && (
+          <div
+            style={{
+              minWidth: 0, display: "flex", alignItems: "stretch",
+              borderLeft: "1px solid var(--orca-line)",
+              paddingLeft: 18,
+            }}
+          >
+            <DiscussionStrip
+              spread={discussion?.spread ?? null}
+              onRefresh={onRefreshDiscussion}
+            />
+          </div>
         )}
       </div>
-
-      {/* subtitle */}
-      <div style={{ fontSize: 12.5, color: "#334155", lineHeight: 1.4 }}>
-        {subtitle}
-      </div>
-
-      {/* footer: source · date picker (when present) */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600, letterSpacing: 0.2, paddingTop: 4, borderTop: "1px solid #eef2f0" }}>
-        <span>{sourceLabel}</span>
-        {dateInput && <span style={{ opacity: 0.5 }}>·</span>}
-        {dateInput}
-      </div>
-
-      {/* discussion-rate strip — GDELT mention volume + 30d chart, in-card so
-          it's unambiguously attached to this hazard. */}
-      {(discussion !== undefined) && (
-        <DiscussionStrip
-          spread={discussion?.spread ?? null}
-          onRefresh={onRefreshDiscussion}
-        />
-      )}
     </div>
   );
 }

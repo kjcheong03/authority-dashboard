@@ -34,7 +34,8 @@
       "PowerShell(npx tsc --noEmit 2>&1)",
       "PowerShell($root = \"C:\\\\Users\\\\USER\\\\Desktop\\\\Hackathon\\\\BrainHack CARA\"; Get-ChildItem $root -Directory | Select-Object Name; Write-Host \"---public---\"; if \\(Test-Path \"$root\\\\public\"\\) { Get-ChildItem \"$root\\\\public\" | Select-Object Name })",
       "WebFetch(domain:www.tiktok.com)",
-      "WebFetch(domain:mothership.sg)"
+      "WebFetch(domain:mothership.sg)",
+      "PowerShell($procs = Get-Process node -ErrorAction SilentlyContinue; if \\($procs\\) { $procs | Select-Object Id, ProcessName, @{N='CPU\\(s\\)';E={[math]::Round\\($_.CPU,1\\)}}, @{N='MemMB';E={[math]::Round\\($_.WorkingSet64/1MB,0\\)}} | Format-Table -AutoSize; $procs | Stop-Process -Force; Write-Output \"Killed $\\($procs.Count\\) node process\\(es\\).\" } else { Write-Output \"No node processes running.\" }; if \\(Test-Path \".next\\\\dev\\\\lock\"\\) { Remove-Item \".next\\\\dev\\\\lock\" -Force; Write-Output \"Removed stale .next\\\\dev\\\\lock\" })"
     ]
   }
 }

@@ -40,7 +40,7 @@ export function Findings({
 
   return (
     <>
-      <div style={{ padding: 14, display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10 }}>
+      <div style={{ padding: 16, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gridAutoRows: "96px", gap: 12, alignContent: "start", flex: 1, minHeight: 0, overflowY: "auto" }}>
         {OFFICIAL_CHANNELS.map((channel) => (
           <SourceTile
             key={channel.id}
@@ -105,18 +105,20 @@ function SourceTile({
         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); }
       }}
       style={{
-        background: isSelected ? `${accent}10` : "#fff",
+        background: isSelected ? `${accent}0d` : "#fff",
         border: `1.5px solid ${isSelected ? accent : "var(--orca-line)"}`,
-        borderRadius: 12,
+        borderRadius: 14,
         overflow: "hidden",
         cursor: "pointer",
-        boxShadow: isSelected ? `0 4px 14px -6px ${accent}55` : "none",
+        boxShadow: isSelected
+          ? `0 6px 18px -6px ${accent}40, var(--orca-shadow-sm)`
+          : "var(--orca-shadow-sm)",
         opacity: hasData ? 1 : 0.7,
         transition: "border-color .15s, box-shadow .15s, opacity .15s, background .15s",
         outline: "none",
       }}
     >
-      <div style={{ position: "relative", padding: "16px 12px 12px", display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ position: "relative", padding: "12px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%" }}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (hasData) onInspect(); }}
@@ -144,11 +146,11 @@ function SourceTile({
           height={36}
           style={{ borderRadius: 8 }}
         />
-        <div style={{ fontSize: 13, fontWeight: 800, color: "var(--orca-ink)", textAlign: "center" }}>
+        <div style={{ fontSize: 14, fontWeight: 800, color: "var(--orca-ink)", textAlign: "center" }}>
           {channel.name}
         </div>
         {hasData && (
-          <div style={{ fontSize: 10, color: "var(--orca-muted)", fontWeight: 600 }}>
+          <div style={{ fontSize: 11, color: "var(--orca-muted)", fontWeight: 600 }}>
             {items.length} finding{items.length === 1 ? "" : "s"}
           </div>
         )}
