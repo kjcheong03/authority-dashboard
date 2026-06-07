@@ -225,7 +225,7 @@ export default function Page() {
       </div>
 
       {/* ── Topic input + controls ──────────────────────────────────────── */}
-      <div className="topic-row" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 22px 16px", flexWrap: "wrap" }}>
+      <div className="topic-row" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "26px 22px 18px", flexWrap: "wrap" }}>
         <TopicPicker
           current={topicText || "COVID-19"}
           recent={recentTopics}
