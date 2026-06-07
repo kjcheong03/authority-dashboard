@@ -1,288 +1,303 @@
 -- ============================================================================
--- ORCA Authority Dashboard — Supabase / Postgres schema
--- One-shot. Idempotent. Safe to re-run.
+-- ORCA Authority Dashboard schema — consolidated into the SHARED project
+-- (the same Supabase project the ORCA caregiver webapp + community dashboard
+--  use: https://cnunojxtlnqadxdbtqxw.supabase.co).
 --
--- Persists every research run so officers can:
---   (a) reload a finished run without re-running the 3-min pipeline
---   (b) autofill the broadcast draft from a saved run
---   (c) get an immutable audit trail of broadcasts
+-- ── ONE-SHOT, IDEMPOTENT, RE-RUNNABLE ────────────────────────────────────────
+-- Paste the entire file into Supabase SQL Editor and Run. Safe to re-run.
 --
--- ── How to run on Supabase ─────────────────────────────────────────────────
+-- ── WHAT'S MERGED HERE ───────────────────────────────────────────────────────
+-- 1. The original authority schema (runs, findings, claims, spread,
+--    assessments, drafts, broadcasts, sources, run_logs, hazard_gdelt).
+-- 2. The post-TinyFish scraper changes that landed on the authority dashboard:
+--    • `source_url` columns on findings + claims (replaces snapshot evidence)
+--    • new `draft_history` table (per-run draft versions: every regenerate
+--      appends a row so the officer can browse / restore earlier drafts)
+-- 3. The legacy `tinyfish_run_id` / `tinyfish_step_id` columns + the
+--    `channel_sessions` table stay present (no longer written by the code, but
+--    preserved for back-compat with any rows the project already holds).
+--
+-- ── WHY THIS LIVES HERE (and in /Community Dashboard/.../db/) ────────────────
+-- The authority dashboard previously wrote to its own isolated Supabase. Now
+-- both the caregiver webapp + the community dashboard + the authority
+-- dashboard share ONE project so an approved broadcast actually becomes
+-- something the downstream apps can read.
+--
+-- ── SECURITY POSTURE ─────────────────────────────────────────────────────────
+-- Every table has RLS ENABLED with NO policies → only the service_role key can
+-- read/write. Both the caregiver/community/authority Next.js servers use the
+-- service-role client; the browser never queries these tables directly. To
+-- defend against a project-wide GRANT that may have leaked anon access to
+-- public schema objects, every authority table is also REVOKE-ALL'd from anon
+-- and authenticated. The view is created as security_invoker so it cannot be
+-- used to bypass base-table RLS.
+--
+-- ── HOW TO RUN ON SUPABASE ───────────────────────────────────────────────────
 -- 1. Supabase Dashboard → SQL Editor → New query
 -- 2. Paste this entire file → Run
--- 3. All access happens server-side from Next.js API routes using the
---    SERVICE_ROLE key (bypasses RLS). The browser never queries directly.
--- 4. Env vars to add (Vercel + .env.local):
---      NEXT_PUBLIC_SUPABASE_URL        = https://<project>.supabase.co
---      SUPABASE_SERVICE_ROLE_KEY       = eyJ... (server-only — keep secret)
--- ────────────────────────────────────────────────────────────────────────────
+-- 3. Authority Dashboard .env.local must point at this project:
+--      NEXT_PUBLIC_SUPABASE_URL         = https://cnunojxtlnqadxdbtqxw.supabase.co
+--      NEXT_PUBLIC_SUPABASE_ANON_KEY    = sb_publishable_… (client-readable)
+--      SUPABASE_SERVICE_ROLE_KEY        = sb_secret_…       (server-only)
+-- ============================================================================
 
--- Supabase ships with pgcrypto enabled and gen_random_uuid() ready to go.
+begin;
+
+create extension if not exists pgcrypto;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- runs ─ the root entity. One row per research investigation.
+-- runs ─ root entity. One row per research investigation.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS runs (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  topic           TEXT NOT NULL,
-  region          TEXT NOT NULL DEFAULT '',
-  audience        TEXT NOT NULL DEFAULT 'Caregivers',
-  mode            TEXT NOT NULL DEFAULT 'live'
-                    CHECK (mode IN ('live', 'replay')),
-  status          TEXT NOT NULL DEFAULT 'running'
-                    CHECK (status IN ('running', 'complete', 'failed', 'stopped')),
-  phase           TEXT,                              -- ingest | misinfo | draft | done
-  pct             SMALLINT NOT NULL DEFAULT 0,
-  error           TEXT,
-  streaming_url   TEXT,                              -- TinyFish live stream URL
-  officer_id      TEXT,                              -- nullable until auth wired
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at    TIMESTAMPTZ
+create table if not exists public.runs (
+  id              uuid primary key default gen_random_uuid(),
+  topic           text not null,
+  region          text not null default '',
+  audience        text not null default 'Caregivers',
+  mode            text not null default 'live'
+                    check (mode in ('live', 'replay')),
+  status          text not null default 'running'
+                    check (status in ('running', 'complete', 'failed', 'stopped')),
+  phase           text,                              -- ingest | misinfo | draft | done
+  pct             smallint not null default 0,
+  error           text,
+  streaming_url   text,                              -- legacy (TinyFish era); kept for back-compat
+  officer_id      text,                              -- nullable until auth wired
+  created_at      timestamptz not null default now(),
+  completed_at    timestamptz
 );
-CREATE INDEX IF NOT EXISTS idx_runs_created_at ON runs (created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_runs_topic_lc   ON runs (LOWER(topic));
-CREATE INDEX IF NOT EXISTS idx_runs_status     ON runs (status);
+create index if not exists idx_runs_created_at on public.runs (created_at desc);
+create index if not exists idx_runs_topic_lc   on public.runs (lower(topic));
+create index if not exists idx_runs_status     on public.runs (status);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- findings ─ verified facts extracted from official sources during ingest.
+-- `source_url` is the canonical "view source ↗" link captured by the scraper.
+-- The legacy `tinyfish_run_id` / `tinyfish_step_id` columns are kept for
+-- back-compat with rows written before the TinyFish removal; they are no
+-- longer written by the application.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS findings (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  run_id      UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  agency      TEXT NOT NULL,                         -- "MOH", "NEA", "WHO", "data.gov.sg"
-  stat        TEXT,                                  -- short figure ("5 clusters")
-  text        TEXT NOT NULL,                         -- the verified finding
-  url         TEXT,                                  -- source URL
-  time_ago    TEXT,                                  -- "12 mins ago" / "as of …"
-  ordinal     INT NOT NULL DEFAULT 0,                -- preserve emit order
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.findings (
+  id                uuid primary key default gen_random_uuid(),
+  run_id            uuid not null references public.runs (id) on delete cascade,
+  agency            text not null,                  -- "MOH", "NEA", "WHO", …
+  stat              text,                           -- short figure ("5 clusters")
+  text              text not null,                  -- the verified finding
+  url               text,                           -- source URL (kept for back-compat)
+  source_url        text,                           -- scraper-captured source URL (preferred going forward)
+  time_ago          text,                           -- "12 mins ago" / "as of …"
+  ordinal           int  not null default 0,        -- preserve emit order
+  tinyfish_run_id   text,                           -- LEGACY (dormant)
+  tinyfish_step_id  text,                           -- LEGACY (dormant)
+  created_at        timestamptz not null default now()
 );
-CREATE INDEX IF NOT EXISTS idx_findings_run ON findings (run_id, ordinal);
+create index if not exists idx_findings_run on public.findings (run_id, ordinal);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- claims ─ misinformation claims detected from public channels.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS claims (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  run_id      UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  client_id   TEXT,                                  -- "claim_0", "claim_1" (the SSE id)
-  text        TEXT NOT NULL,
-  severity    TEXT NOT NULL DEFAULT 'UNVERIFIED'
-                CHECK (severity IN ('UNVERIFIED', 'MINOR_DISCREPANCY')),
-  where_seen  TEXT,                                  -- "WhatsApp", "r/singapore" …
-  shares      TEXT,                                  -- spread indicator if any
-  contradicts TEXT,
-  analysis    TEXT,
-  fix         TEXT,                                  -- suggested clarification
-  velocity    TEXT,                                  -- SURGING / RISING / …
-  ordinal     INT NOT NULL DEFAULT 0,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.claims (
+  id                uuid primary key default gen_random_uuid(),
+  run_id            uuid not null references public.runs (id) on delete cascade,
+  client_id         text,                           -- "claim_0", "claim_1" (the SSE id)
+  text              text not null,
+  severity          text not null default 'UNVERIFIED'
+                      check (severity in ('UNVERIFIED', 'MINOR_DISCREPANCY')),
+  where_seen        text,                           -- "Reddit", "Telegram" …
+  shares            text,                           -- engagement signal
+  contradicts       text,
+  analysis          text,
+  fix               text,                           -- suggested clarification
+  velocity          text,                           -- SURGING / RISING / …
+  source_url        text,                           -- scraper-captured source URL
+  ordinal           int  not null default 0,
+  tinyfish_run_id   text,                           -- LEGACY (dormant)
+  tinyfish_step_id  text,                           -- LEGACY (dormant)
+  created_at        timestamptz not null default now()
 );
-CREATE INDEX IF NOT EXISTS idx_claims_run        ON claims (run_id, ordinal);
-CREATE INDEX IF NOT EXISTS idx_claims_run_client ON claims (run_id, client_id);
+create index if not exists idx_claims_run        on public.claims (run_id, ordinal);
+create index if not exists idx_claims_run_client on public.claims (run_id, client_id);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- claim_origins ─ origin / amplification / debunk timeline per claim.
+-- claim_origins ─ legacy origin / amplification / debunk timeline per claim.
+-- Kept for back-compat; the application no longer writes to this table after
+-- the origin-tracing feature was removed.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS claim_origins (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  claim_id      UUID NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
-  single_source BOOLEAN,                             -- claim-level flag
-  date_str      TEXT,                                -- "2026-05-19"
-  outlet        TEXT NOT NULL,                       -- "WhatsApp", "WHO", …
-  event         TEXT NOT NULL,                       -- short clause
-  type          TEXT NOT NULL
-                  CHECK (type IN ('origin', 'amplification', 'debunk', 'investigation')),
-  url           TEXT,
-  ordinal       INT NOT NULL DEFAULT 0
+create table if not exists public.claim_origins (
+  id            uuid primary key default gen_random_uuid(),
+  claim_id      uuid not null references public.claims (id) on delete cascade,
+  single_source boolean,                            -- claim-level flag
+  date_str      text,                               -- "2026-05-19"
+  outlet        text not null,                      -- "WhatsApp", "WHO", …
+  event         text not null,                      -- short clause
+  type          text not null
+                  check (type in ('origin', 'amplification', 'debunk', 'investigation')),
+  url           text,
+  ordinal       int  not null default 0
 );
-CREATE INDEX IF NOT EXISTS idx_origins_claim ON claim_origins (claim_id, ordinal);
+create index if not exists idx_origins_claim on public.claim_origins (claim_id, ordinal);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- claim_factchecks ─ published fact-checks corroborating a claim.
+-- claim_factchecks ─ legacy. Published fact-checks corroborating a claim.
+-- Dormant — no longer written.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS claim_factchecks (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  claim_id   UUID NOT NULL REFERENCES claims(id) ON DELETE CASCADE,
-  publisher  TEXT NOT NULL,                          -- "AFP Fact Check"
-  rating     TEXT NOT NULL,                          -- "False", "Misleading"
-  title      TEXT,
-  url        TEXT NOT NULL
+create table if not exists public.claim_factchecks (
+  id         uuid primary key default gen_random_uuid(),
+  claim_id   uuid not null references public.claims (id) on delete cascade,
+  publisher  text not null,                         -- "AFP Fact Check"
+  rating     text not null,                         -- "False", "Misleading"
+  title      text,
+  url        text not null
 );
-CREATE INDEX IF NOT EXISTS idx_factchecks_claim ON claim_factchecks (claim_id);
+create index if not exists idx_factchecks_claim on public.claim_factchecks (claim_id);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- spread ─ GDELT coverage signal. One row per run.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS spread (
-  run_id              UUID PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
-  velocity_label      TEXT,                          -- SURGING / RISING / …
-  total_articles      INT,
-  top_countries       JSONB,
-  singapore_articles  INT,
-  singapore_velocity  TEXT,
-  tone_label          TEXT,                          -- ALARMIST / NEGATIVE / NEUTRAL / POSITIVE
-  avg_tone            NUMERIC,
-  source              TEXT CHECK (source IN ('bigquery', 'doc')),
-  timeline            JSONB                          -- daily {date, global, sg, tone}
+create table if not exists public.spread (
+  run_id              uuid primary key references public.runs (id) on delete cascade,
+  velocity_label      text,                         -- SURGING / RISING / …
+  total_articles      int,
+  top_countries       jsonb,
+  singapore_articles  int,
+  singapore_velocity  text,
+  tone_label          text,                         -- ALARMIST / NEGATIVE / NEUTRAL / POSITIVE
+  avg_tone            numeric,
+  source              text check (source in ('bigquery', 'doc')),
+  timeline            jsonb                         -- daily {date, global, sg, tone}
 );
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- assessments ─ broadcast triage verdict. One per run.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS assessments (
-  run_id          UUID PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
-  verdict         TEXT NOT NULL CHECK (verdict IN ('BROADCAST', 'MONITOR', 'NO ACTION')),
-  rationale       TEXT NOT NULL,
-  urgency         TEXT NOT NULL CHECK (urgency IN ('HIGH', 'NORMAL')),
-  audience        TEXT NOT NULL,
-  signal_local    TEXT,
-  signal_spread   TEXT,
-  signal_misinfo  TEXT,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.assessments (
+  run_id          uuid primary key references public.runs (id) on delete cascade,
+  verdict         text not null check (verdict in ('BROADCAST', 'MONITOR', 'NO ACTION')),
+  rationale       text not null,
+  urgency         text not null check (urgency in ('HIGH', 'NORMAL')),
+  audience        text not null,
+  signal_local    text,
+  signal_spread   text,
+  signal_misinfo  text,
+  created_at      timestamptz not null default now()
 );
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- drafts ─ the AI-generated advisory. One per run. Editable post-completion.
--- This is the row a "Load run" feature reads to autofill the broadcast panel.
+-- This is the row the "Load run" feature reads to autofill the broadcast panel.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS drafts (
-  run_id        UUID PRIMARY KEY REFERENCES runs(id) ON DELETE CASCADE,
-  title         TEXT NOT NULL,
-  body          TEXT NOT NULL,                       -- markdown w/ **bold** + [text](url)
-  target        TEXT NOT NULL,
-  urgency       TEXT NOT NULL CHECK (urgency IN ('HIGH', 'NORMAL')),
-  checklist     JSONB,                               -- array of strings, optional
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.drafts (
+  run_id        uuid primary key references public.runs (id) on delete cascade,
+  title         text not null,
+  body          text not null,                      -- markdown w/ **bold** + [text](url)
+  target        text not null,
+  urgency       text not null check (urgency in ('HIGH', 'NORMAL')),
+  checklist     jsonb,                              -- array of strings, optional
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- draft_history ─ per-run draft history. Every regenerate appends a row so the
+-- officer can browse and restore prior versions (incl. audience-tailored ones).
+-- ─────────────────────────────────────────────────────────────────────────────
+create table if not exists public.draft_history (
+  id            uuid primary key default gen_random_uuid(),
+  run_id        uuid not null references public.runs (id) on delete cascade,
+  title         text not null,
+  body          text not null,
+  target        text not null,
+  urgency       text not null check (urgency in ('HIGH', 'NORMAL')),
+  audience_mode text not null default 'all'
+                  check (audience_mode in ('all', 'selected')),
+  profiles      jsonb,                              -- ["Diabetes", "Heart", …]
+  created_at    timestamptz not null default now()
+);
+create index if not exists idx_draft_history_run on public.draft_history (run_id, created_at desc);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- broadcasts ─ immutable record of every approved broadcast (audit-grade).
--- A run can produce 0..n broadcasts (re-broadcasts allowed); each one snapshots
--- the exact draft at the moment of approval.
+-- The ORCA caregiver webapp reads this table (server-side, service-role) to
+-- surface real broadcasts. A run can produce 0..n broadcasts.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS broadcasts (
-  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  run_id          UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  draft_snapshot  JSONB NOT NULL,                    -- full draft frozen at send time
-  title           TEXT NOT NULL,
-  body            TEXT NOT NULL,
-  urgency         TEXT NOT NULL CHECK (urgency IN ('HIGH', 'NORMAL')),
-  audience_mode   TEXT NOT NULL DEFAULT 'all'
-                    CHECK (audience_mode IN ('all', 'selected')),
-  target_profiles JSONB,                             -- ["Diabetes", "Heart", …]
-  reach_estimate  INT,                               -- e.g. 380000
-  confirmation_id TEXT NOT NULL,                     -- "BCST-2026-06-04-A7F3"
-  status          TEXT NOT NULL DEFAULT 'sent'
-                    CHECK (status IN ('sent', 'failed', 'pending')),
-  sent_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  sent_by         TEXT                               -- officer_id, nullable
+create table if not exists public.broadcasts (
+  id              uuid primary key default gen_random_uuid(),
+  run_id          uuid not null references public.runs (id) on delete cascade,
+  draft_snapshot  jsonb not null,                   -- full draft frozen at send time
+  title           text not null,
+  body            text not null,
+  urgency         text not null check (urgency in ('HIGH', 'NORMAL')),
+  audience_mode   text not null default 'all'
+                    check (audience_mode in ('all', 'selected')),
+  target_profiles jsonb,                            -- ["Diabetes", "Heart", …]
+  reach_estimate  int,                              -- e.g. 380000
+  confirmation_id text not null,                    -- "BCST-2026-06-04-A7F3"
+  status          text not null default 'sent'
+                    check (status in ('sent', 'failed', 'pending')),
+  sent_at         timestamptz not null default now(),
+  sent_by         text                              -- officer_id, nullable
 );
-CREATE INDEX IF NOT EXISTS idx_broadcasts_run     ON broadcasts (run_id);
-CREATE INDEX IF NOT EXISTS idx_broadcasts_sent_at ON broadcasts (sent_at DESC);
+create index if not exists idx_broadcasts_run     on public.broadcasts (run_id);
+create index if not exists idx_broadcasts_sent_at on public.broadcasts (sent_at desc);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- sources ─ consulted source list per run (drives the source chips).
+-- sources ─ consulted source list per run.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS sources (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  run_id    UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  name      TEXT NOT NULL,
-  url       TEXT NOT NULL,
-  ordinal   INT NOT NULL DEFAULT 0
+create table if not exists public.sources (
+  id        uuid primary key default gen_random_uuid(),
+  run_id    uuid not null references public.runs (id) on delete cascade,
+  name      text not null,
+  url       text not null,
+  ordinal   int  not null default 0
 );
-CREATE INDEX IF NOT EXISTS idx_sources_run ON sources (run_id, ordinal);
+create index if not exists idx_sources_run on public.sources (run_id, ordinal);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- run_logs ─ every SSE log line from a run. Drives the /audit page.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS run_logs (
-  id        BIGSERIAL PRIMARY KEY,
-  run_id    UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  level     TEXT NOT NULL CHECK (level IN ('info', 'warn', 'ok')),
-  message   TEXT NOT NULL,
-  ts        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.run_logs (
+  id        bigserial primary key,
+  run_id    uuid not null references public.runs (id) on delete cascade,
+  level     text not null check (level in ('info', 'warn', 'ok')),
+  message   text not null,
+  ts        timestamptz not null default now()
 );
-CREATE INDEX IF NOT EXISTS idx_run_logs_run ON run_logs (run_id, ts);
+create index if not exists idx_run_logs_run on public.run_logs (run_id, ts);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- View ─ latest completed run per topic. Powers the "Resume previous run for
--- this topic" UX so officers don't re-run the pipeline unnecessarily.
+-- channel_sessions ─ legacy per (run × TinyFish channel) metadata. Dormant
+-- after the TinyFish removal; kept for back-compat with old rows.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE OR REPLACE VIEW latest_complete_runs_per_topic AS
-SELECT DISTINCT ON (LOWER(topic)) *
-FROM runs
-WHERE status = 'complete'
-ORDER BY LOWER(topic), completed_at DESC NULLS LAST, created_at DESC;
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- Auto-bump drafts.updated_at on every UPDATE (so we know when the officer
--- last edited the draft, even without explicit timestamp passing).
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE OR REPLACE FUNCTION bump_drafts_updated_at() RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at := NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trg_drafts_bump_updated_at ON drafts;
-CREATE TRIGGER trg_drafts_bump_updated_at
-  BEFORE UPDATE ON drafts
-  FOR EACH ROW
-  EXECUTE FUNCTION bump_drafts_updated_at();
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- Per-finding / per-claim TinyFish provenance (idempotent).
--- Each finding/claim was produced by a specific TinyFish session, and that
--- session has a step ID whose screenshot + HTML snapshot we use as evidence.
--- ─────────────────────────────────────────────────────────────────────────────
-ALTER TABLE findings ADD COLUMN IF NOT EXISTS tinyfish_run_id  TEXT;
-ALTER TABLE findings ADD COLUMN IF NOT EXISTS tinyfish_step_id TEXT;
-ALTER TABLE claims   ADD COLUMN IF NOT EXISTS tinyfish_run_id  TEXT;
-ALTER TABLE claims   ADD COLUMN IF NOT EXISTS tinyfish_step_id TEXT;
-
-
--- ─────────────────────────────────────────────────────────────────────────────
--- channel_sessions ─ one row per (research run × TinyFish channel). Captures
--- the per-source session metadata that findings/claims point at: the TinyFish
--- run_id, the last meaningful step (drives the snapshot button), the start URL,
--- the goal, plus the session's lifecycle status. Lets the audit page show
--- exactly which page each source landed on without joining through every row.
--- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS channel_sessions (
-  run_id            UUID NOT NULL REFERENCES runs(id) ON DELETE CASCADE,
-  channel_id        TEXT NOT NULL,                       -- "moh", "reddit", …
-  lane              TEXT NOT NULL                        -- "verified" | "online"
-                      CHECK (lane IN ('verified', 'online')),
-  tinyfish_run_id   TEXT,                                -- the upstream session id
-  last_step_id      TEXT,                                -- drives snapshot proxy
-  start_url         TEXT,
-  goal              TEXT,
-  status            TEXT NOT NULL DEFAULT 'pending'
-                      CHECK (status IN ('pending', 'ok', 'failed', 'cancelled')),
-  item_count        INT NOT NULL DEFAULT 0,              -- findings or claims produced
-  started_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  completed_at      TIMESTAMPTZ,
-  PRIMARY KEY (run_id, channel_id)
+create table if not exists public.channel_sessions (
+  run_id            uuid not null references public.runs (id) on delete cascade,
+  channel_id        text not null,
+  lane              text not null
+                      check (lane in ('verified', 'online')),
+  tinyfish_run_id   text,
+  last_step_id      text,
+  start_url         text,
+  goal              text,
+  status            text not null default 'pending'
+                      check (status in ('pending', 'ok', 'failed', 'cancelled')),
+  item_count        int  not null default 0,
+  started_at        timestamptz not null default now(),
+  completed_at      timestamptz,
+  primary key (run_id, channel_id)
 );
-CREATE INDEX IF NOT EXISTS idx_channel_sessions_run ON channel_sessions (run_id);
-CREATE INDEX IF NOT EXISTS idx_channel_sessions_tf  ON channel_sessions (tinyfish_run_id);
+create index if not exists idx_channel_sessions_run on public.channel_sessions (run_id);
+create index if not exists idx_channel_sessions_tf  on public.channel_sessions (tinyfish_run_id);
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
@@ -290,34 +305,96 @@ CREATE INDEX IF NOT EXISTS idx_channel_sessions_tf  ON channel_sessions (tinyfis
 -- Page-load reads from here so the top GDELT cards render instantly. A refresh
 -- button on each card forces a fresh BigQuery call and upserts back.
 -- ─────────────────────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS hazard_gdelt (
-  topic       TEXT PRIMARY KEY,
-  spread      JSONB NOT NULL,
-  fetched_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+create table if not exists public.hazard_gdelt (
+  topic       text primary key,
+  spread      jsonb not null,
+  fetched_at  timestamptz not null default now()
 );
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Row-Level Security (Supabase)
---
--- All tables are LOCKED to anon/auth keys. The Next.js API routes use the
--- SERVICE_ROLE key, which bypasses RLS. The browser never queries Postgres
--- directly — it talks to /api/* which then uses the service-role client.
---
--- This is the right posture for an authority tool: nothing should be readable
--- from a stray client key.
+-- Defensive idempotent ALTERs ─ guarantee the new + legacy columns exist even
+-- when running against a database that was created from an older version of
+-- this schema (covers both the TinyFish-era columns and the new source_url).
 -- ─────────────────────────────────────────────────────────────────────────────
-ALTER TABLE runs              ENABLE ROW LEVEL SECURITY;
-ALTER TABLE findings          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE claims            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE claim_origins     ENABLE ROW LEVEL SECURITY;
-ALTER TABLE claim_factchecks  ENABLE ROW LEVEL SECURITY;
-ALTER TABLE spread            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE assessments       ENABLE ROW LEVEL SECURITY;
-ALTER TABLE drafts            ENABLE ROW LEVEL SECURITY;
-ALTER TABLE broadcasts        ENABLE ROW LEVEL SECURITY;
-ALTER TABLE sources           ENABLE ROW LEVEL SECURITY;
-ALTER TABLE run_logs          ENABLE ROW LEVEL SECURITY;
-ALTER TABLE hazard_gdelt      ENABLE ROW LEVEL SECURITY;
-ALTER TABLE channel_sessions  ENABLE ROW LEVEL SECURITY;
--- (No policies defined → only service_role key can read/write.)
+alter table public.findings add column if not exists source_url       text;
+alter table public.findings add column if not exists tinyfish_run_id  text;
+alter table public.findings add column if not exists tinyfish_step_id text;
+alter table public.claims   add column if not exists source_url       text;
+alter table public.claims   add column if not exists tinyfish_run_id  text;
+alter table public.claims   add column if not exists tinyfish_step_id text;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- View ─ latest completed run per topic. Created as security_invoker so it
+-- respects the caller's RLS on `runs` (cannot be used to bypass the lockdown).
+-- ─────────────────────────────────────────────────────────────────────────────
+create or replace view public.latest_complete_runs_per_topic
+with (security_invoker = true)
+as
+select distinct on (lower(topic)) *
+from public.runs
+where status = 'complete'
+order by lower(topic), completed_at desc nulls last, created_at desc;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Auto-bump drafts.updated_at on every UPDATE.
+-- ─────────────────────────────────────────────────────────────────────────────
+create or replace function public.bump_drafts_updated_at() returns trigger as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists trg_drafts_bump_updated_at on public.drafts;
+create trigger trg_drafts_bump_updated_at
+  before update on public.drafts
+  for each row
+  execute function public.bump_drafts_updated_at();
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Row-Level Security ─ lock every authority table to service-role only.
+-- RLS enabled + zero policies = anon/authenticated keys get no rows, regardless
+-- of any table-level GRANT. The Next.js servers use the service-role client,
+-- which bypasses RLS.
+-- ─────────────────────────────────────────────────────────────────────────────
+alter table public.runs              enable row level security;
+alter table public.findings          enable row level security;
+alter table public.claims            enable row level security;
+alter table public.claim_origins     enable row level security;
+alter table public.claim_factchecks  enable row level security;
+alter table public.spread            enable row level security;
+alter table public.assessments       enable row level security;
+alter table public.drafts            enable row level security;
+alter table public.draft_history     enable row level security;
+alter table public.broadcasts        enable row level security;
+alter table public.sources           enable row level security;
+alter table public.run_logs          enable row level security;
+alter table public.channel_sessions  enable row level security;
+alter table public.hazard_gdelt      enable row level security;
+
+
+-- Belt-and-suspenders: revoke any access the client roles may have inherited
+-- from a project-wide GRANT, so these objects are never reachable with
+-- anon/auth keys.
+revoke all on public.runs              from anon, authenticated;
+revoke all on public.findings          from anon, authenticated;
+revoke all on public.claims            from anon, authenticated;
+revoke all on public.claim_origins     from anon, authenticated;
+revoke all on public.claim_factchecks  from anon, authenticated;
+revoke all on public.spread            from anon, authenticated;
+revoke all on public.assessments       from anon, authenticated;
+revoke all on public.drafts            from anon, authenticated;
+revoke all on public.draft_history     from anon, authenticated;
+revoke all on public.broadcasts        from anon, authenticated;
+revoke all on public.sources           from anon, authenticated;
+revoke all on public.run_logs          from anon, authenticated;
+revoke all on public.channel_sessions  from anon, authenticated;
+revoke all on public.hazard_gdelt      from anon, authenticated;
+revoke all on public.latest_complete_runs_per_topic from anon, authenticated;
+
+
+commit;

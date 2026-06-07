@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { reveal } from "@/lib/motion";
 import type { Finding } from "@/lib/types";
 import { OFFICIAL_CHANNELS, channelForAgency, faviconUrl, type Channel } from "@/lib/channels";
-import { SnapshotModal } from "./SnapshotModal";
 import { SourceItemsModal } from "./SourceItemsModal";
 
 // Verified-lane uses a single accent — selected tiles all light up the same
@@ -21,7 +20,6 @@ export function Findings({
   selected: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const [snapshotOf, setSnapshotOf] = useState<Finding | null>(null);
   const [inspectChannel, setInspectChannel] = useState<Channel | null>(null);
 
   // Always render every official channel — empty containers are still
@@ -59,18 +57,7 @@ export function Findings({
         channel={inspectChannel}
         accent={ACCENT}
         findings={inspectChannel ? (byChannel.get(inspectChannel.id) ?? []) : []}
-        onSnapshot={(item) => setSnapshotOf(item as Finding)}
         onClose={() => setInspectChannel(null)}
-      />
-
-      <SnapshotModal
-        open={!!snapshotOf}
-        runId={snapshotOf?.tinyfishRunId}
-        stepId={snapshotOf?.tinyfishStepId}
-        sourceName={snapshotOf?.agency ?? ""}
-        sourceUrl={snapshotOf?.url}
-        itemText={snapshotOf?.text ?? ""}
-        onClose={() => setSnapshotOf(null)}
       />
     </>
   );
@@ -118,7 +105,7 @@ function SourceTile({
         outline: "none",
       }}
     >
-      <div style={{ position: "relative", padding: "12px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8, height: "100%" }}>
+      <div style={{ position: "relative", padding: "12px 14px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, height: "100%" }}>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); if (hasData) onInspect(); }}

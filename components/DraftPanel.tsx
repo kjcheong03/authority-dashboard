@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Draft, Finding, Claim } from "@/lib/types";
+import { RegenerateAudienceModal } from "./RegenerateAudienceModal";
+import { DraftHistoryModal, type DraftHistoryEntry } from "./DraftHistoryModal";
 
 // ── Markdown ⇄ HTML for the rich body editor ──────────────────────────────
 function escapeHtml(s: string) {
@@ -43,7 +45,21 @@ function htmlToMd(root: HTMLElement): string {
     .replace(/\s+$/, "");
 }
 
-const PROFILES = ["Diabetes", "Heart", "Respiratory", "Dementia", "Kidney", "Immunocompromised", "Mobility"];
+// SINGLE source of truth for caregiver profile chips. Used both by the
+// Regenerate-audience modal AND by the SEND TO chip row below the broadcast
+// editor, so a profile picked during regenerate (or loaded from history)
+// always renders correctly when shown back to the officer.
+const PROFILES = [
+  "Diabetes",
+  "Heart",
+  "Stroke",
+  "Cancer",
+  "Kidney",
+  "Respiratory",
+  "Dementia",
+  "Immunocompromised",
+  "Mobility",
+];
 
 const FONT = "var(--font-rounded), ui-sans-serif, system-ui, sans-serif";
 const SELECTED = "#334155";
@@ -120,6 +136,8 @@ export function DraftPanel({
   const [lang, setLang] = useState<Lang>("en");
   const [translations, setTranslations] = useState<Record<string, Translation>>({});
   const [translating, setTranslating] = useState(false);
+  const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
+  const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Translate the current English content into ALL ORCA languages, in parallel.
@@ -163,7 +181,7 @@ export function DraftPanel({
 
   const busy = regenerating || translating;
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (mode: "all" | "selected", profilesArg: string[]) => {
     if (!runId || busy) return;
     setRegenerating(true);
     try {
@@ -175,6 +193,8 @@ export function DraftPanel({
           officialChannels: [...selectedOfficial],
           socialChannels: [...selectedSocial],
           hazardSnapshot: hazardSnapshot ?? undefined,
+          audienceMode: mode,
+          profiles: profilesArg,
         }),
       });
       // onRefresh updates the `draft` prop, which triggers translateAll via the
@@ -269,8 +289,8 @@ export function DraftPanel({
           ))}
         </select>
         <button
-          onClick={handleRegenerate}
-          disabled={!runId || busy || (findings.length === 0 && claims.length === 0)}
+          onClick={() => setRegenerateModalOpen(true)}
+          disabled={!runId || busy}
           title="Regenerate draft + all language versions from selected sources"
           aria-label="Regenerate draft and all language versions"
           style={{
@@ -278,13 +298,31 @@ export function DraftPanel({
             width: 30, height: 30, borderRadius: 8,
             border: "1px solid var(--orca-line)", background: "#fff",
             color: "var(--orca-ink)", cursor: busy ? "default" : "pointer",
-            opacity: !runId || busy || (findings.length === 0 && claims.length === 0) ? 0.45 : 1,
+            opacity: !runId || busy ? 0.45 : 1,
           }}
         >
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ animation: busy ? "spin .8s linear infinite" : undefined }} aria-hidden="true">
             <polyline points="23 4 23 10 17 10" />
             <polyline points="1 20 1 14 7 14" />
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+          </svg>
+        </button>
+        <button
+          onClick={() => setHistoryModalOpen(true)}
+          disabled={!runId}
+          title="Draft history for this run"
+          aria-label="Draft history for this run"
+          style={{
+            display: "grid", placeItems: "center",
+            width: 30, height: 30, borderRadius: 8,
+            border: "1px solid var(--orca-line)", background: "#fff",
+            color: "var(--orca-ink)", cursor: !runId ? "default" : "pointer",
+            opacity: !runId ? 0.45 : 1,
+          }}
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <polyline points="12 7 12 12 15 14" />
           </svg>
         </button>
       </header>
@@ -417,6 +455,33 @@ export function DraftPanel({
         )}
 
       </div>
+      <RegenerateAudienceModal
+        open={regenerateModalOpen}
+        initialMode={audienceMode}
+        initialProfiles={profiles}
+        availableProfiles={PROFILES}
+        onClose={() => setRegenerateModalOpen(false)}
+        onConfirm={async (mode, profilesPicked) => {
+          setAudienceMode(mode);
+          setProfiles(profilesPicked);
+          setRegenerateModalOpen(false);
+          await handleRegenerate(mode, profilesPicked);
+        }}
+      />
+      <DraftHistoryModal
+        open={historyModalOpen}
+        runId={runId}
+        onClose={() => setHistoryModalOpen(false)}
+        onSelect={(entry: DraftHistoryEntry) => {
+          setHeadline(entry.title);
+          setBody(entry.body);
+          setUrgent(entry.urgency === "HIGH");
+          setAudienceMode(entry.audienceMode);
+          setProfiles(entry.profiles ?? []);
+          if (editorRef.current) editorRef.current.innerHTML = mdToHtml(entry.body);
+          setHistoryModalOpen(false);
+        }}
+      />
     </section>
   );
 }

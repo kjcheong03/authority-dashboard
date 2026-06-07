@@ -8,7 +8,7 @@
  * Body: { runId, officialChannels: string[], socialChannels: string[] }
  * ─────────────────────────────────────────────────────────────────────────── */
 
-import { db, loadRun, saveDraft, saveLog, updateRun } from "@/lib/db";
+import { db, loadRun, saveDraft, saveDraftHistory, saveLog, updateRun } from "@/lib/db";
 import { generateDraft, type HazardSnapshot } from "@/lib/agents";
 import { channelForAgency, channelForWhere } from "@/lib/channels";
 import type { Finding, Claim, TopicInput } from "@/lib/types";
@@ -21,6 +21,8 @@ interface PostBody {
   officialChannels: string[];
   socialChannels: string[];
   hazardSnapshot?: HazardSnapshot;
+  audienceMode?: 'all' | 'selected';
+  profiles?: string[];
 }
 
 export async function POST(req: Request) {
@@ -63,6 +65,10 @@ export async function POST(req: Request) {
   await saveLog(body.runId, "info", `Regenerating draft from ${officialSet.size} verified + ${socialSet.size} online source(s) selected by officer…`);
 
   try {
+    const audienceArg = {
+      mode: (body.audienceMode ?? 'all') as 'all' | 'selected',
+      profiles: body.profiles ?? [],
+    };
     const draft = await generateDraft(
       topic,
       advisorySummary,
@@ -78,11 +84,21 @@ export async function POST(req: Request) {
         velocity: c.velocity,
       })),
       body.hazardSnapshot ?? null,
+      audienceArg,
     );
     // Keep urgency consistent with the original assessment if there is one.
     if (hydrated.assessment) draft.urgency = hydrated.assessment.urgency;
 
     await saveDraft(body.runId, draft);
+    await saveDraftHistory({
+      runId: body.runId,
+      title: draft.title,
+      body: draft.body,
+      target: draft.target,
+      urgency: draft.urgency,
+      audienceMode: audienceArg.mode,
+      profiles: audienceArg.profiles,
+    });
     await updateRun(body.runId, { pct: 100 });
     await saveLog(body.runId, "ok", `Draft regenerated · ${findings.length} facts · ${claims.length} claims.`);
 
