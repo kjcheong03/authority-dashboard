@@ -61,6 +61,9 @@ export function SurveillanceGrid(props: {
         }
       `}</style>
 
+      {/* The radar dish only exists while a scan is in flight. Once the run
+          completes it disappears entirely, leaving just the "Completed" label. */}
+      {status === "running" && (
       <div
         style={{
           position: "relative",
@@ -71,8 +74,7 @@ export function SurveillanceGrid(props: {
           justifyContent: "center",
         }}
       >
-        {/* Static grid rings — always present so the dish reads as a scanner
-            even when idle. */}
+        {/* Static grid rings — present so the dish reads as a scanner. */}
         <span
           style={{
             position: "absolute",
@@ -136,6 +138,7 @@ export function SurveillanceGrid(props: {
           }}
         />
       </div>
+      )}
 
       {/* Label: "Running" while a scan is in flight, "Completed" once a
           non-empty run has finished. (Idle was handled by the early return.) */}
