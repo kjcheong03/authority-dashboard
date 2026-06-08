@@ -292,11 +292,17 @@ export default function Page() {
                   Verified Sources{state.findings.length > 0 ? ` · ${state.findings.length}` : ""}
                 </IntelTab>
                 <IntelTab active={intelTab === "misinfo"} onClick={() => setIntelTab("misinfo")}>
-                  Online Sources{state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
+                  Online Sources (Misinformation){state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
                 </IntelTab>
               </div>
             </div>
             <section style={{ background: "var(--orca-panel)", border: "1px solid var(--orca-line)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--orca-shadow-sm)", flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+              {/* How-to hint — the per-tile italic "i" badge opens that source's
+                  captured items; spell it out so it isn't missed. */}
+              <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 16px", borderBottom: "1px solid var(--orca-line)", background: "#fbfcfe", fontSize: 11.5, color: "var(--orca-muted)", fontWeight: 600 }}>
+                <span aria-hidden style={{ display: "grid", placeItems: "center", width: 17, height: 17, borderRadius: "50%", border: "1px solid var(--orca-muted)", color: "var(--orca-muted)", fontSize: 10, fontWeight: 800, fontStyle: "italic", fontFamily: "Georgia, 'Times New Roman', serif", lineHeight: 1, flexShrink: 0 }}>i</span>
+                <span>Click the badge on any source to view the items captured from it.</span>
+              </div>
               {intelTab === "findings" ? (
                 <Findings findings={state.findings} selected={selectedOfficial} onToggle={toggleOfficial} />
               ) : (
@@ -494,11 +500,11 @@ function GdeltCard({
     SURGING: "#dc2626", RISING: "#b45309", STEADY: "#1d4ed8", DECLINING: "#16a34a", MINIMAL: "#94a3b8",
   };
   const spread = cached?.spread ?? null;
-  const sgVelocity = spread?.singaporeVelocity ?? "—";
-  const vColor = velocityColor[sgVelocity] ?? "#94a3b8";
-  // Monthly total of SG mentions (sum of timeline) — replaces the 24h global figure.
+  const globalVelocity = spread?.velocityLabel ?? "—";
+  const vColor = velocityColor[globalVelocity] ?? "#94a3b8";
+  // Monthly total of GLOBAL mentions (sum of timeline) — replaces the 24h figure.
   const timeline = spread?.timeline ?? [];
-  const sgMonthly = timeline.reduce((s, p) => s + (p.sg ?? 0), 0);
+  const globalMonthly = timeline.reduce((s, p) => s + (p.global ?? 0), 0);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -517,7 +523,7 @@ function GdeltCard({
     >
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 0.5, color: "var(--orca-muted)", flex: 1 }}>
-          DISCUSSION RATE · {topic.toUpperCase()}
+          NEWS MENTIONS · GDELT · {topic.toUpperCase()}
         </span>
         <button
           onClick={handleRefresh}
@@ -542,11 +548,11 @@ function GdeltCard({
         <>
           <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
             <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: "var(--orca-ink)", lineHeight: 1 }}>
-              {sgMonthly.toLocaleString("en-SG")}
+              {globalMonthly.toLocaleString("en-SG")}
             </span>
             <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>last 30d</span>
           </div>
-          <div style={{ fontSize: 11, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>{sgVelocity}</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>{globalVelocity}</div>
           {timeline.length >= 2 && (
             <div style={{ flex: 1, minHeight: 28, display: "flex", alignItems: "stretch" }}>
               <SgBars timeline={timeline} color={vColor} />
@@ -562,15 +568,15 @@ function GdeltCard({
   );
 }
 
-function SgBars({ timeline, color }: { timeline: Array<{ date: string; sg: number }>; color: string }) {
-  const values = timeline.map((p) => p.sg);
+function SgBars({ timeline, color, field = "global" }: { timeline: Array<{ date: string; global?: number; sg?: number }>; color: string; field?: "global" | "sg" }) {
+  const values = timeline.map((p) => p[field] ?? 0);
   const max = Math.max(...values, 1);
   const bw = 100 / values.length;
   // preserveAspectRatio: "none" lets the svg vertically stretch to fill its
   // parent container, so the bars chart eats the empty space that used to sit
   // below it inside the discussion strip.
   return (
-    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }} aria-label="30-day SG mentions">
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }} aria-label={`30-day ${field === "sg" ? "SG" : "global"} mentions`}>
       {values.map((v, i) => {
         const h = Math.max(1.2, (v / max) * 26);
         return <rect key={i} x={i * bw} y={28 - h} width={bw * 0.7} height={h} fill={color} opacity={i === values.length - 1 ? 1 : 0.6} />;
@@ -816,10 +822,11 @@ function DiscussionStrip({
   const velocityColor: Record<string, string> = {
     SURGING: "#dc2626", RISING: "#b45309", STEADY: "#1d4ed8", DECLINING: "#16a34a", MINIMAL: "#94a3b8",
   };
-  const v = spread?.singaporeVelocity ?? "—";
+  // Global coverage (not the Singapore subset) — velocity + total mentions.
+  const v = spread?.velocityLabel ?? "—";
   const vColor = velocityColor[v] ?? "#94a3b8";
   const timeline = spread?.timeline ?? [];
-  const monthly = timeline.reduce((s, p) => s + (p.sg ?? 0), 0);
+  const monthly = timeline.reduce((s, p) => s + (p.global ?? 0), 0);
 
   const handleRefresh = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -832,10 +839,38 @@ function DiscussionStrip({
     <div
       onClick={(e) => e.stopPropagation()}
       style={{
-        marginTop: 8, paddingTop: 8, borderTop: "1px dashed #d6def0",
         display: "flex", flexDirection: "column", gap: 5,
       }}
     >
+      {/* Heading — bold + dark so it clearly reads as "media-coverage volume"
+          (news mentions), distinct from the case / cluster stat on the left. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <span style={{ fontSize: 11.5, fontWeight: 800, letterSpacing: 0.4, color: "var(--orca-ink)", textTransform: "uppercase", flex: 1, lineHeight: 1.2 }}>
+          News Mentions · GDELT
+        </span>
+        {onRefresh && (
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            title="Refresh from BigQuery"
+            aria-label="Refresh discussion rate"
+            style={{
+              display: "grid", placeItems: "center",
+              width: 20, height: 20, borderRadius: 5,
+              border: "1px solid var(--orca-line)", background: "#fff",
+              color: "var(--orca-muted)", cursor: refreshing ? "default" : "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? "spin .8s linear infinite" : undefined }}>
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+        )}
+      </div>
+
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 13, fontWeight: 800, color: "var(--orca-ink)" }}>
           {spread ? monthly.toLocaleString("en-SG") : "—"}
@@ -846,27 +881,6 @@ function DiscussionStrip({
         <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>
           {v}
         </span>
-        {onRefresh && (
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            title="Refresh from BigQuery"
-            aria-label="Refresh discussion rate"
-            style={{
-              marginLeft: "auto",
-              display: "grid", placeItems: "center",
-              width: 20, height: 20, borderRadius: 5,
-              border: "1px solid var(--orca-line)", background: "#fff",
-              color: "var(--orca-muted)", cursor: refreshing ? "default" : "pointer",
-            }}
-          >
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" style={{ animation: refreshing ? "spin .8s linear infinite" : undefined }}>
-              <polyline points="23 4 23 10 17 10" />
-              <polyline points="1 20 1 14 7 14" />
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-            </svg>
-          </button>
-        )}
       </div>
       {spread && timeline.length >= 2 ? (
         <SgBars timeline={timeline} color={vColor} />
@@ -884,7 +898,7 @@ function IntelTab({ children, active, onClick }: { children: React.ReactNode; ac
     <button
       onClick={onClick}
       style={{
-        font: "inherit", fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 999, cursor: "pointer",
+        font: "inherit", fontSize: 12, fontWeight: 600, padding: "6px 13px", borderRadius: 999, cursor: "pointer", whiteSpace: "nowrap",
         border: active ? "1px solid #002C77" : "1px solid var(--orca-line)",
         background: active ? "rgba(0,44,119,.1)" : "#fff",
         color: active ? "#002C77" : "var(--orca-muted)",

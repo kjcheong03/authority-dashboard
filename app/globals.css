@@ -47,9 +47,10 @@ body {
 }
 .workspace-grid {
   display: grid;
-  /* Sources column kept thin so the Broadcast container gets the most room —
-     the draft editor + headline + recipient controls need the breathing space. */
-  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.8fr);
+  /* Sources column gets a touch more room so its tab pills (incl. the longer
+     "Online Sources (Misinformation)" label) sit on one row; the Broadcast
+     container is trimmed slightly but still holds the most width. */
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.65fr);
   gap: 16px;
   /* Equal-height columns so the Sources card lines up with the (taller)
      Broadcast card. Without this, Sources ends short, leaving a dead zone. */
