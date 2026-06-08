@@ -240,7 +240,7 @@ export default function Page() {
           onKeyDown={(e) => { if (e.key === "Enter" && canRun && !state.running) start(topic, "live", hazardSnapshot); }}
           placeholder="…or type a custom topic"
           disabled={state.running}
-          style={{ width: 440, maxWidth: "70vw", fontSize: 13.5, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--orca-line)", background: "#fff" }}
+          style={{ width: 760, maxWidth: "82vw", fontSize: 13.5, padding: "10px 14px", borderRadius: 8, border: "1px solid var(--orca-line)", background: "#fff" }}
         />
         {state.running ? (
           <button onClick={stop} style={btnGhost}>Stop</button>
@@ -293,7 +293,7 @@ export default function Page() {
                   Verified Sources{state.findings.length > 0 ? ` · ${state.findings.length}` : ""}
                 </IntelTab>
                 <IntelTab active={intelTab === "misinfo"} onClick={() => setIntelTab("misinfo")}>
-                  Online Sources (Misinformation){state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
+                  Potential Misinformation{state.claims.length > 0 ? ` · ${state.claims.length}` : ""}
                 </IntelTab>
               </div>
             </div>
