@@ -17,8 +17,9 @@
  * ─────────────────────────────────────────────────────────────────────────── */
 
 import type { SpreadSignal, VelocityLabel } from "./gdelt";
+import { GDELT_WINDOW_DAYS } from "./types";
 
-const WINDOW_DAYS = 21;
+const WINDOW_DAYS = GDELT_WINDOW_DAYS;
 const MAX_BYTES_BILLED = String(30 * 1024 ** 3); // 30 GB cap per query
 
 // Service-account JSON passed inline (Vercel-friendly). Parsed once, lazily.

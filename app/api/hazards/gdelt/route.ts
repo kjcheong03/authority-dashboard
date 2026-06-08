@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const topic = searchParams.get("topic")?.trim();
   const refresh = searchParams.get("refresh") === "1";
-  // Optional ?date=YYYY-MM-DD anchors the 30-day window to a historical date
+  // Optional ?date=YYYY-MM-DD anchors the GDELT coverage window to a historical date
   // (e.g. COVID-19 with the date picker on the hazard card).
   const date = searchParams.get("date")?.trim() || undefined;
   if (!topic) return Response.json(null);

@@ -13,6 +13,7 @@ import type { TopicInput } from "@/lib/types";
 import { getCovidStats, covidDateBounds, defaultCovidDate } from "@/lib/historicalCovid";
 import type { DengueClusters } from "@/lib/datagovsg";
 import type { Spread } from "@/lib/types";
+import { GDELT_WINDOW_DAYS } from "@/lib/types";
 import { OFFICIAL_CHANNELS, SOCIAL_CHANNELS } from "@/lib/channels";
 
 export default function Page() {
@@ -113,7 +114,7 @@ export default function Page() {
         gdelt: covidGdelt?.spread
           ? {
               velocity: covidGdelt.spread.singaporeVelocity ?? covidGdelt.spread.velocityLabel,
-              mentions30d: covidGdelt.spread.singaporeArticles,
+              mentionsWindow: covidGdelt.spread.singaporeArticles,
             }
           : undefined,
       };
@@ -130,7 +131,7 @@ export default function Page() {
         gdelt: dengueGdelt?.spread
           ? {
               velocity: dengueGdelt.spread.singaporeVelocity ?? dengueGdelt.spread.velocityLabel,
-              mentions30d: dengueGdelt.spread.singaporeArticles,
+              mentionsWindow: dengueGdelt.spread.singaporeArticles,
             }
           : undefined,
       };
@@ -550,7 +551,7 @@ function GdeltCard({
             <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: -0.4, color: "var(--orca-ink)", lineHeight: 1 }}>
               {globalMonthly.toLocaleString("en-SG")}
             </span>
-            <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>last 30d</span>
+            <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>last {GDELT_WINDOW_DAYS}d</span>
           </div>
           <div style={{ fontSize: 11, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>{globalVelocity}</div>
           {timeline.length >= 2 && (
@@ -576,7 +577,7 @@ function SgBars({ timeline, color, field = "global" }: { timeline: Array<{ date:
   // parent container, so the bars chart eats the empty space that used to sit
   // below it inside the discussion strip.
   return (
-    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }} aria-label={`30-day ${field === "sg" ? "SG" : "global"} mentions`}>
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" style={{ width: "100%", height: "100%", display: "block" }} aria-label={`${GDELT_WINDOW_DAYS}-day ${field === "sg" ? "SG" : "global"} mentions`}>
       {values.map((v, i) => {
         const h = Math.max(1.2, (v / max) * 26);
         return <rect key={i} x={i * bw} y={28 - h} width={bw * 0.7} height={h} fill={color} opacity={i === values.length - 1 ? 1 : 0.6} />;
@@ -876,7 +877,7 @@ function DiscussionStrip({
           {spread ? monthly.toLocaleString("en-SG") : "—"}
         </span>
         <span style={{ fontSize: 10.5, color: "var(--orca-muted)", fontWeight: 600 }}>
-          mentions · 30d
+          mentions · {GDELT_WINDOW_DAYS}d
         </span>
         <span style={{ marginLeft: 4, fontSize: 10, fontWeight: 800, color: vColor, letterSpacing: 0.3 }}>
           {v}

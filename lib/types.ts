@@ -89,6 +89,14 @@ export interface SpreadPoint {
   tone?: number; // mean tone that day (BigQuery)
 }
 
+/**
+ * Length (in days) of the GDELT coverage window. Single source of truth: both
+ * backends (BigQuery + the DOC API fallback) query this many days, and every UI
+ * label / report line derives from it — so the window can never drift out of
+ * sync with its labels again. Kept short to stay inside BigQuery's free tier.
+ */
+export const GDELT_WINDOW_DAYS = 21;
+
 /** The broadcast triage decision — the spine of the dashboard. */
 export type Verdict = "BROADCAST" | "MONITOR" | "NO ACTION";
 export interface Assessment {

@@ -7,6 +7,7 @@
  * ─────────────────────────────────────────────────────────────────────────── */
 
 import type { TopicInput, Finding, Claim, Draft, Spread, ClaimOrigin, FactCheck, SourceRef, Assessment } from "./types";
+import { GDELT_WINDOW_DAYS } from "./types";
 
 const esc = (s: string) =>
   s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>");
@@ -109,7 +110,7 @@ function spreadHTML(s: Spread | null): string {
     ${tile("🇸🇬 Singapore", s.singaporeVelocity, `${fmtNum(s.singaporeArticles)} · peak ${peak(tl.map((p) => p.sg))}/d`, sparkBars(tl.map((p) => p.sg), "#16a34a"))}
     ${s.toneLabel ? tile("Media tone", s.toneLabel, typeof s.avgTone === "number" ? `avg ${s.avgTone}` : "", sparkLine(tl.filter((p) => typeof p.tone === "number").map((p) => p.tone as number), AMBER)) : ""}
   </div>
-  <div class="dim" style="margin-top:8px">via GDELT${s.source === "bigquery" ? " · BigQuery" : ""} · daily, last 30 days</div>`;
+  <div class="dim" style="margin-top:8px">via GDELT${s.source === "bigquery" ? " · BigQuery" : ""} · daily, last ${GDELT_WINDOW_DAYS} days</div>`;
 }
 
 function factChecksHTML(fcs: FactCheck[] | undefined): string {
