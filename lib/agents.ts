@@ -3,6 +3,7 @@
  * ─────────────────────────────────────────────────────────────────────────── */
 
 import type { Claim, Finding, Draft, TopicInput } from "./types";
+import { GDELT_WINDOW_DAYS } from "./types";
 
 const OPENAI_KEY = process.env.OPENAI_API_KEY!;
 
@@ -414,7 +415,7 @@ export interface HazardSnapshot {
   asOf?: string;
   source?: string;
   gdelt?: {
-    mentions30d?: string | number;
+    mentionsWindow?: string | number;
     velocity?: string;
   };
 }
@@ -424,7 +425,7 @@ function formatHazardSnapshot(h: HazardSnapshot): string {
   if (h.cases !== undefined) lines.push(`- ${h.cases} ${h.casesLabel ?? "cases"}${h.trend ? ` (${h.trend})` : ""}`);
   if (h.hospitalisations !== undefined) lines.push(`- ${h.hospitalisations} ${h.hospitalisationsLabel ?? "hospitalisations"}`);
   if (h.icu !== undefined) lines.push(`- ${h.icu} in ICU`);
-  if (h.gdelt?.velocity) lines.push(`- Online discussion: ${h.gdelt.velocity}${h.gdelt.mentions30d !== undefined ? ` (${h.gdelt.mentions30d} mentions in last 30d)` : ""}`);
+  if (h.gdelt?.velocity) lines.push(`- Online discussion: ${h.gdelt.velocity}${h.gdelt.mentionsWindow !== undefined ? ` (${h.gdelt.mentionsWindow} mentions in last ${GDELT_WINDOW_DAYS}d)` : ""}`);
   const meta = [h.source, h.asOf].filter(Boolean).join(" · ");
   if (meta) lines.push(`- Source: ${meta}`);
   return lines.join("\n");

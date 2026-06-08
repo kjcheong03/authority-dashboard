@@ -10,6 +10,8 @@
  *    good result per keyword so a transient block degrades to recent real numbers.
  * ─────────────────────────────────────────────────────────────────────────── */
 
+import { GDELT_WINDOW_DAYS } from "./types";
+
 export type VelocityLabel = "SURGING" | "RISING" | "STEADY" | "DECLINING" | "MINIMAL";
 
 export interface SpreadSignal {
@@ -38,7 +40,7 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /** One DOC 2.0 ArtList request, with a 429 back-off retry. */
 async function gdeltFetch(query: string, retried = false): Promise<Article[] | null> {
-  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&timespan=30d`;
+  const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=artlist&maxrecords=250&format=json&timespan=${GDELT_WINDOW_DAYS}d`;
   const ac = new AbortController();
   const timeout = setTimeout(() => ac.abort(), 20000);
   try {
@@ -70,7 +72,8 @@ function velocityOf(articles: Article[]): VelocityLabel {
   let recent = 0,
     older = 0;
   for (const d of dates) (d >= cutoff ? (recent += dateCounts[d]) : (older += dateCounts[d]));
-  const v = older / 23 > 0 ? recent / 7 / (older / 23) : recent > 0 ? 10 : 0;
+  const olderDays = GDELT_WINDOW_DAYS - 7;
+  const v = older / olderDays > 0 ? recent / 7 / (older / olderDays) : recent > 0 ? 10 : 0;
   return v >= 3 ? "SURGING" : v >= 1.5 ? "RISING" : v >= 0.7 ? "STEADY" : v > 0 ? "DECLINING" : "MINIMAL";
 }
 

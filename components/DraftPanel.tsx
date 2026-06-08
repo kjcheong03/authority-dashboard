@@ -390,44 +390,48 @@ export function DraftPanel({
           )}
         </div>
 
-        <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
-          <Pill active={urgent} onClick={() => setUrgent(true)}>High Urgency</Pill>
-          <Pill active={!urgent} onClick={() => setUrgent(false)}>Normal</Pill>
-        </div>
-
-        <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--orca-muted)", letterSpacing: 0.4, marginBottom: 8 }}>SEND TO</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <Pill active={audienceMode === "all"} onClick={() => { setAudienceMode("all"); setProfiles([]); }}>
-              All caregivers
-            </Pill>
-            <Pill active={audienceMode === "selected"} onClick={() => setAudienceMode("selected")}>
-              Selected profiles
-            </Pill>
-          </div>
-
-          {audienceMode === "selected" && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
-              {PROFILES.map((p) => {
-                const on = profiles.includes(p);
-                return (
-                  <button
-                    key={p}
-                    onClick={() => toggleProfile(p)}
-                    style={{
-                      fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 999, cursor: "pointer",
-                      border: `1px solid ${on ? SELECTED : "var(--orca-line)"}`,
-                      background: on ? SELECTED : "#fff",
-                      color: on ? "#fff" : "var(--orca-muted)",
-                    }}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
+        <div style={{ display: "flex", gap: 36, marginTop: 16, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--orca-muted)", letterSpacing: 0.4, marginBottom: 8 }}>URGENCY</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Pill active={urgent} onClick={() => setUrgent(true)}>High Urgency</Pill>
+              <Pill active={!urgent} onClick={() => setUrgent(false)}>Normal</Pill>
             </div>
-          )}
+          </div>
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--orca-muted)", letterSpacing: 0.4, marginBottom: 8 }}>SEND TO</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <Pill active={audienceMode === "all"} onClick={() => { setAudienceMode("all"); setProfiles([]); }}>
+                All caregivers
+              </Pill>
+              <Pill active={audienceMode === "selected"} onClick={() => setAudienceMode("selected")}>
+                Selected profiles
+              </Pill>
+            </div>
+          </div>
         </div>
+
+        {audienceMode === "selected" && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
+            {PROFILES.map((p) => {
+              const on = profiles.includes(p);
+              return (
+                <button
+                  key={p}
+                  onClick={() => toggleProfile(p)}
+                  style={{
+                    fontSize: 12, fontWeight: 600, padding: "5px 12px", borderRadius: 999, cursor: "pointer",
+                    border: `1px solid ${on ? SELECTED : "var(--orca-line)"}`,
+                    background: on ? SELECTED : "#fff",
+                    color: on ? "#fff" : "var(--orca-muted)",
+                  }}
+                >
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         <div style={{ marginTop: 18 }}>
           <button
