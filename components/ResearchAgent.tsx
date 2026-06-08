@@ -30,6 +30,12 @@ export function ResearchAgent({
   const status: "idle" | "running" | "completed" =
     running ? "running" : hasResults ? "completed" : "idle";
 
+  // On idle there's nothing to render (no scanner, no progress bar). Return
+  // null instead of an empty section so the parent workspace flex doesn't
+  // reserve a `gap: 16` slot above/below an invisible child — that phantom
+  // gap pushed the broadcast container down ~32px from the topic row.
+  if (status === "idle") return null;
+
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <SurveillanceGrid
