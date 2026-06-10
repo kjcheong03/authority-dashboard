@@ -341,7 +341,20 @@ export function DraftPanel({
   return (
     <section style={panel}>
       <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 16px", borderBottom: "1px solid var(--orca-line)" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, flex: 1 }}>Broadcast</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Broadcast</h2>
+          {broadcast && (
+            <span
+              style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
+                color: "#15803d", background: "#dcfce7", border: "1px solid #bbf7d0",
+                padding: "2px 9px", borderRadius: 999,
+              }}
+            >
+              Completed
+            </span>
+          )}
+        </div>
         <select
           value={lang}
           onChange={(e) => setLang(e.target.value as Lang)}
@@ -398,6 +411,20 @@ export function DraftPanel({
       </header>
 
       <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+        {broadcast ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, paddingTop: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "#15803d" }}>
+              <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 999, background: "#dcfce7", fontSize: 12 }}>✓</span>
+              Broadcast sent
+            </div>
+            {confirmation && (
+              <div style={{ fontSize: 12, color: "var(--orca-muted)" }}>
+                Confirmation: <code style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{confirmation}</code>
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
         {!isEn && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ fontSize: 11, color: "var(--orca-muted)", lineHeight: 1.5, flex: 1 }}>
@@ -524,17 +551,13 @@ export function DraftPanel({
             {sending ? "Sending…" : broadcast ? "✓ Sent" : "Approve & broadcast"}
           </button>
         </div>
-        {confirmation && (
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--orca-muted)" }}>
-            Confirmation: <code style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{confirmation}</code>
-          </div>
-        )}
         {!runId && draft && (
           <div style={{ marginTop: 8, fontSize: 11, color: "var(--orca-muted)" }}>
             No run in progress to broadcast against.
           </div>
         )}
-
+          </>
+        )}
       </div>
       <RegenerateAudienceModal
         open={regenerateModalOpen}
