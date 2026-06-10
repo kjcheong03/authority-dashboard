@@ -209,6 +209,19 @@ export function DraftPanel({
   // as a tick beside the Broadcast title (replaces the old floating "Completed").
   const searchCompleted = !running && (findings.length > 0 || claims.length > 0);
 
+  // Stamp the moment the search first reports complete so the pill can read
+  // "Completed · <date/time>". Cleared when a new run starts (searchCompleted
+  // flips back to false); `prev ?? new Date()` keeps that first stamp stable.
+  const [completedAt, setCompletedAt] = useState<Date | null>(null);
+  useEffect(() => {
+    setCompletedAt((prev) => (searchCompleted ? prev ?? new Date() : null));
+  }, [searchCompleted]);
+  const completedLabel = completedAt
+    ? completedAt.toLocaleString(undefined, {
+        day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : null;
+
   const handleRegenerate = async (mode: "all" | "selected", profilesArg: string[]) => {
     if (!runId || busy) return;
     setRegenerating(true);
@@ -351,9 +364,9 @@ export function DraftPanel({
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Broadcast</h2>
           {searchCompleted && (
             <span
-              title="Search complete"
+              title={completedLabel ? `Search complete · ${completedLabel}` : "Search complete"}
               style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
+                display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap",
                 fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
                 color: "#15803d", background: "#dcfce7", border: "1px solid #bbf7d0",
                 padding: "2px 9px", borderRadius: 999,
@@ -362,7 +375,7 @@ export function DraftPanel({
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
-              Completed
+              Completed{completedLabel ? ` · ${completedLabel}` : ""}
             </span>
           )}
         </div>
