@@ -47,7 +47,6 @@ const CHANNEL_DESCRIPTORS: Record<string, string> = {
   hwz:        "HardwareZone (forums.hardwarezone.com.sg) — Singapore's largest mainstream discussion forum. Source URLs must point to forums.hardwarezone.com.sg threads.",
   mothership: "Mothership.sg — a high-engagement Singapore digital news outlet. Source URLs must come from mothership.sg.",
   telegram:   "Singapore public Telegram channels (e.g. @sgwhispers, @MustShareNewsSG, @SGcommunity) where citizens discuss news and share rumours. Source URLs must come from t.me.",
-  tiktok:     "TikTok videos relevant to Singapore (Singapore-based creators or Singapore-context content). Source URLs must come from tiktok.com.",
   facebook:   "Public Facebook posts, pages, and groups relevant to Singapore. Source URLs must come from facebook.com.",
   ddg:        "the open web (Singapore-focused — news outlets, blogs, forums based in or relevant to Singapore). Source URLs can come from any reputable Singapore-focused publisher.",
 };

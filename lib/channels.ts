@@ -37,7 +37,6 @@ export const CHANNELS: Channel[] = [
   { id: "hwz",        name: "HardwareZone", domain: "hardwarezone.com.sg", lane: "social",   type: "browser" },
   { id: "mothership", name: "Mothership",   domain: "mothership.sg",       lane: "social",   type: "browser" },
   { id: "telegram",   name: "Telegram",     domain: "telegram.org",        lane: "social",   type: "browser" },
-  { id: "tiktok",     name: "TikTok",       domain: "tiktok.com",          lane: "social",   type: "browser" },
   { id: "facebook",   name: "Facebook",     domain: "facebook.com",        lane: "social",   type: "browser" },
   { id: "ddg",        name: "DuckDuckGo",   domain: "duckduckgo.com",      lane: "social",   type: "browser" },
 ];
@@ -64,7 +63,6 @@ const aliasToSocial: Record<string, string> = {
   hardwarezone: "hwz", hwz: "hwz",
   mothership: "mothership",
   telegram: "telegram", whatsapp: "telegram", "messaging app": "telegram",
-  tiktok: "tiktok",
   facebook: "facebook", fb: "facebook",
   duckduckgo: "ddg", ddg: "ddg",
 };
