@@ -62,7 +62,7 @@ export function SurveillanceGrid(props: {
       `}</style>
 
       {/* The radar dish only exists while a scan is in flight. Once the run
-          completes it disappears entirely, leaving just the "Completed" label. */}
+          completes it disappears entirely, leaving only the channel grid. */}
       {status === "running" && (
       <div
         style={{
@@ -140,18 +140,21 @@ export function SurveillanceGrid(props: {
       </div>
       )}
 
-      {/* Label: "Running" while a scan is in flight, "Completed" once a
-          non-empty run has finished. (Idle was handled by the early return.) */}
-      <div
-        style={{
-          color: NAVY,
-          fontSize: 14,
-          fontWeight: 600,
-          letterSpacing: 0.3,
-        }}
-      >
-        {status === "running" ? "Running" : "Completed"}
-      </div>
+      {/* Label: "Running" only while a scan is in flight. Once the run finishes
+          the label is hidden — completion is signalled by the tick beside the
+          Broadcast panel instead. (Idle was handled by the early return.) */}
+      {status === "running" && (
+        <div
+          style={{
+            color: NAVY,
+            fontSize: 14,
+            fontWeight: 600,
+            letterSpacing: 0.3,
+          }}
+        >
+          Running
+        </div>
+      )}
     </div>
   );
 }

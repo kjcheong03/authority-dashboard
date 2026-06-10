@@ -107,6 +107,7 @@ async function translateOne(title: string, body: string, lang: string): Promise<
 export function DraftPanel({
   draft,
   runId,
+  running,
   findings,
   claims,
   selectedOfficial,
@@ -116,6 +117,7 @@ export function DraftPanel({
 }: {
   draft: Draft | null;
   runId: string | null;
+  running?: boolean;
   findings: Finding[];
   claims: Claim[];
   selectedOfficial: Set<string>;
@@ -202,6 +204,10 @@ export function DraftPanel({
   }, [lang]);
 
   const busy = regenerating || translating;
+  // The scan/search is "complete" once it's no longer running and has produced
+  // results — mirrors the status logic in ResearchAgent/SurveillanceGrid. Shown
+  // as a tick beside the Broadcast title (replaces the old floating "Completed").
+  const searchCompleted = !running && (findings.length > 0 || claims.length > 0);
 
   const handleRegenerate = async (mode: "all" | "selected", profilesArg: string[]) => {
     if (!runId || busy) return;
@@ -343,14 +349,19 @@ export function DraftPanel({
       <header style={{ display: "flex", alignItems: "center", gap: 8, padding: "11px 16px", borderBottom: "1px solid var(--orca-line)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
           <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Broadcast</h2>
-          {broadcast && (
+          {searchCompleted && (
             <span
+              title="Search complete"
               style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
                 fontSize: 11, fontWeight: 700, letterSpacing: 0.2,
                 color: "#15803d", background: "#dcfce7", border: "1px solid #bbf7d0",
                 padding: "2px 9px", borderRadius: 999,
               }}
             >
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
               Completed
             </span>
           )}
@@ -411,20 +422,6 @@ export function DraftPanel({
       </header>
 
       <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        {broadcast ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 10, paddingTop: 4 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700, color: "#15803d" }}>
-              <span style={{ display: "grid", placeItems: "center", width: 20, height: 20, borderRadius: 999, background: "#dcfce7", fontSize: 12 }}>✓</span>
-              Broadcast sent
-            </div>
-            {confirmation && (
-              <div style={{ fontSize: 12, color: "var(--orca-muted)" }}>
-                Confirmation: <code style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{confirmation}</code>
-              </div>
-            )}
-          </div>
-        ) : (
-          <>
         {!isEn && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ fontSize: 11, color: "var(--orca-muted)", lineHeight: 1.5, flex: 1 }}>
@@ -551,13 +548,17 @@ export function DraftPanel({
             {sending ? "Sending…" : broadcast ? "✓ Sent" : "Approve & broadcast"}
           </button>
         </div>
+        {confirmation && (
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--orca-muted)" }}>
+            Confirmation: <code style={{ fontWeight: 700, color: "var(--orca-ink)" }}>{confirmation}</code>
+          </div>
+        )}
         {!runId && draft && (
           <div style={{ marginTop: 8, fontSize: 11, color: "var(--orca-muted)" }}>
             No run in progress to broadcast against.
           </div>
         )}
-          </>
-        )}
+
       </div>
       <RegenerateAudienceModal
         open={regenerateModalOpen}

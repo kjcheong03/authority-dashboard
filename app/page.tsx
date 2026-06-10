@@ -315,6 +315,7 @@ export default function Page() {
           <DraftPanel
             draft={state.draft}
             runId={state.runId}
+            running={state.running}
             findings={state.findings}
             claims={state.claims}
             selectedOfficial={selectedOfficial}
