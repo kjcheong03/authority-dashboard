@@ -137,17 +137,33 @@ export function DraftPanel({
   const [lang, setLang] = useState<Lang>("en");
   const [translations, setTranslations] = useState<Record<string, Translation>>({});
   const [translating, setTranslating] = useState(false);
+  // Languages the officer has hand-edited. These are "sticky": auto-translation
+  // (translateAll) never overwrites them — only an explicit per-language
+  // re-translate (or a full Regenerate, which resets everything) refreshes them.
+  const [editedLangs, setEditedLangs] = useState<Set<string>>(new Set());
   const [regenerateModalOpen, setRegenerateModalOpen] = useState(false);
   const [historyModalOpen, setHistoryModalOpen] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
 
   // Translate the current English content into ALL ORCA languages, in parallel.
   // Returns the map so callers (approve) can use it without waiting for state.
-  const translateAll = async (title: string, bodyText: string): Promise<Record<string, Translation>> => {
+  const translateAll = async (
+    title: string,
+    bodyText: string,
+    opts?: { preserve?: Set<string>; existing?: Record<string, Translation> },
+  ): Promise<Record<string, Translation>> => {
     if (!title && !bodyText) return {};
+    const preserve = opts?.preserve ?? editedLangs;
+    const existing = opts?.existing ?? translations;
     setTranslating(true);
     try {
-      const entries = await Promise.all(NON_EN.map(async (code) => [code, await translateOne(title, bodyText, code)] as const));
+      const entries = await Promise.all(
+        NON_EN.map(async (code) => {
+          // Keep a hand-edited language verbatim — don't clobber the officer's wording.
+          if (preserve.has(code) && existing[code]) return [code, existing[code]] as const;
+          return [code, await translateOne(title, bodyText, code)] as const;
+        }),
+      );
       const map: Record<string, Translation> = {};
       for (const [code, t] of entries) if (t) map[code] = t;
       setTranslations(map);
@@ -166,17 +182,22 @@ export function DraftPanel({
     setConfirmation(null);
     setLang("en");
     setTranslations({});
+    setEditedLangs(new Set());
     if (editorRef.current) editorRef.current.innerHTML = mdToHtml(draft.body);
     // Pre-generate every language up front so the dropdown is instant.
     void translateAll(draft.title, draft.body);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft]);
 
-  // Restore the editable English body when switching back to English.
+  // On language switch, load that language's current content into the (now
+  // editable) editor: English from `body`, any other language from its
+  // translation (falling back to the English body if it hasn't translated yet).
+  // Depends on `lang` only, so typing — which updates body/translations — never
+  // resets the editor mid-edit and loses the cursor.
   useEffect(() => {
-    if (lang === "en" && editorRef.current) {
-      editorRef.current.innerHTML = mdToHtml(body);
-    }
+    if (!editorRef.current) return;
+    const activeBody = lang === "en" ? body : translations[lang]?.body ?? body;
+    editorRef.current.innerHTML = mdToHtml(activeBody);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
@@ -241,11 +262,48 @@ export function DraftPanel({
     }
   };
 
+  const markEdited = (code: string) =>
+    setEditedLangs((prev) => (prev.has(code) ? prev : new Set(prev).add(code)));
+
   const syncBody = () => {
-    if (editorRef.current) setBody(htmlToMd(editorRef.current));
-    // English changed → cached translations are stale; they're regenerated on
-    // the next Regenerate, or just-in-time when Approve is pressed.
-    setTranslations((prev) => (Object.keys(prev).length ? {} : prev));
+    if (!editorRef.current) return;
+    const md = htmlToMd(editorRef.current);
+    if (lang === "en") {
+      setBody(md);
+      // English (the source) changed → drop cached AUTO translations so they
+      // regenerate fresh on Approve, but KEEP any the officer hand-edited.
+      setTranslations((prev) => {
+        const next: Record<string, Translation> = {};
+        for (const code of Object.keys(prev)) if (editedLangs.has(code)) next[code] = prev[code];
+        return next;
+      });
+      return;
+    }
+    // Editing a translation directly → store it and mark the language sticky.
+    setTranslations((prev) => ({ ...prev, [lang]: { title: prev[lang]?.title ?? headline, body: md } }));
+    markEdited(lang);
+  };
+
+  // Refresh the CURRENT non-English language from the latest English, discarding
+  // the officer's manual edit for that language.
+  const retranslateCurrent = async () => {
+    if (lang === "en" || !runId || busy) return;
+    setTranslating(true);
+    try {
+      const t = await translateOne(headline, body, lang);
+      if (t) {
+        setTranslations((prev) => ({ ...prev, [lang]: t }));
+        setEditedLangs((prev) => {
+          if (!prev.has(lang)) return prev;
+          const n = new Set(prev);
+          n.delete(lang);
+          return n;
+        });
+        if (editorRef.current) editorRef.current.innerHTML = mdToHtml(t.body);
+      }
+    } finally {
+      setTranslating(false);
+    }
   };
   const onEditorKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
@@ -267,7 +325,18 @@ export function DraftPanel({
   const preview = isEn ? null : translations[lang];
   // Fall back to the English content if a translation is missing (never blank).
   const headlineValue = isEn ? headline : preview?.title ?? headline;
-  const previewBody = preview?.body ?? body;
+  const langEdited = !isEn && editedLangs.has(lang);
+
+  // Headline edits route to the active language (English → source headline;
+  // others → that language's translation, marking it sticky).
+  const onHeadlineChange = (val: string) => {
+    if (isEn) {
+      setHeadline(val);
+      return;
+    }
+    setTranslations((prev) => ({ ...prev, [lang]: { title: val, body: prev[lang]?.body ?? body } }));
+    markEdited(lang);
+  };
 
   return (
     <section style={panel}>
@@ -278,7 +347,7 @@ export function DraftPanel({
           onChange={(e) => setLang(e.target.value as Lang)}
           disabled={busy}
           aria-label="Broadcast language"
-          title="Preview / send language"
+          title="Edit / send language"
           style={{
             borderRadius: 8, border: "1px solid var(--orca-line)", padding: "6px 8px",
             fontSize: 12.5, fontFamily: FONT, color: "var(--orca-ink)", background: "#fff",
@@ -330,20 +399,37 @@ export function DraftPanel({
 
       <div style={{ padding: 16, flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {!isEn && (
-          <div style={{ fontSize: 11, color: "var(--orca-muted)", marginBottom: 8, lineHeight: 1.5 }}>
-            Auto-translated · sent to caregivers using this language in the ORCA app.
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--orca-muted)", lineHeight: 1.5, flex: 1 }}>
+              {langEdited
+                ? "Edited · your wording is kept and won't be auto-overwritten."
+                : "Auto-translated · you can edit it before sending."}
+            </div>
+            <button
+              type="button"
+              onClick={retranslateCurrent}
+              disabled={busy}
+              title="Re-translate this language from the latest English (discards manual edits)"
+              style={{
+                flexShrink: 0, fontSize: 11, fontWeight: 600, fontFamily: FONT,
+                padding: "4px 9px", borderRadius: 7, border: "1px solid var(--orca-line)",
+                background: "#fff", color: "var(--orca-ink)",
+                cursor: busy ? "default" : "pointer", opacity: busy ? 0.5 : 1,
+              }}
+            >
+              ↻ Re-translate
+            </button>
           </div>
         )}
 
         <input
           value={headlineValue}
-          onChange={(e) => { if (isEn) setHeadline(e.target.value); }}
-          readOnly={!isEn}
+          onChange={(e) => onHeadlineChange(e.target.value)}
           placeholder="Headline"
           style={{
             width: "100%", borderRadius: 10, border: "1px solid var(--orca-line)", padding: "11px 13px",
             fontSize: 14, fontWeight: 500, fontFamily: FONT, color: "var(--orca-ink)",
-            background: isEn ? "#fff" : "#f8fafc", marginBottom: 10,
+            background: "#fff", marginBottom: 10,
           }}
         />
         <div style={{ border: "1px solid var(--orca-line)", borderRadius: 10, background: "#fff", overflow: "hidden", flex: 1, display: "flex", flexDirection: "column", minHeight: 240 }}>
@@ -352,43 +438,33 @@ export function DraftPanel({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={applyBold}
-              disabled={!isEn}
               title="Bold (Ctrl/Cmd+B)"
               style={{
                 width: 26, height: 26, borderRadius: 6, border: "1px solid var(--orca-line)",
-                background: "#fff", cursor: isEn ? "pointer" : "default", fontWeight: 800, fontSize: 13, fontFamily: FONT,
-                color: "var(--orca-ink)", lineHeight: 1, opacity: isEn ? 1 : 0.4,
+                background: "#fff", cursor: "pointer", fontWeight: 800, fontSize: 13, fontFamily: FONT,
+                color: "var(--orca-ink)", lineHeight: 1,
               }}
             >
               B
             </button>
           </div>
-          {isEn ? (
-            <div
-              ref={editorRef}
-              contentEditable
-              suppressContentEditableWarning
-              onInput={syncBody}
-              onKeyDown={onEditorKeyDown}
-              data-placeholder="Message…"
-              className="orca-editor"
-              style={{
-                flex: 1, overflowY: "auto",
-                minHeight: 180, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
-                fontFamily: FONT, color: "var(--orca-ink)", outline: "none",
-              }}
-            />
-          ) : (
-            <div
-              className="orca-editor"
-              style={{
-                flex: 1, overflowY: "auto",
-                minHeight: 180, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
-                fontFamily: FONT, color: "var(--orca-ink)", background: "#f8fafc",
-              }}
-              dangerouslySetInnerHTML={{ __html: mdToHtml(previewBody) }}
-            />
-          )}
+          {/* One editor for every language. The [lang] effect loads the active
+              language's content; syncBody routes edits back to English or the
+              right translation. */}
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={syncBody}
+            onKeyDown={onEditorKeyDown}
+            data-placeholder="Message…"
+            className="orca-editor"
+            style={{
+              flex: 1, overflowY: "auto",
+              minHeight: 180, padding: 13, fontSize: 14, fontWeight: 500, lineHeight: 1.55,
+              fontFamily: FONT, color: "var(--orca-ink)", outline: "none",
+            }}
+          />
         </div>
 
         <div style={{ display: "flex", gap: 36, marginTop: 16, flexWrap: "wrap" }}>
@@ -483,8 +559,14 @@ export function DraftPanel({
           setUrgent(entry.urgency === "HIGH");
           setAudienceMode(entry.audienceMode);
           setProfiles(entry.profiles ?? []);
+          // Restored English replaces the prior draft → drop its translations +
+          // edit flags, show English, and re-translate fresh from the restored text.
+          setLang("en");
+          setTranslations({});
+          setEditedLangs(new Set());
           if (editorRef.current) editorRef.current.innerHTML = mdToHtml(entry.body);
           setHistoryModalOpen(false);
+          void translateAll(entry.title, entry.body, { preserve: new Set(), existing: {} });
         }}
       />
     </section>
