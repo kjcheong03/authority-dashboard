@@ -65,7 +65,7 @@ const FONT = "var(--font-rounded), ui-sans-serif, system-ui, sans-serif";
 const SELECTED = "#334155";
 
 // ORCA app languages — the broadcast is generated/sent in every one of these.
-type Lang = "en" | "zh" | "ms" | "id" | "tl" | "my";
+type Lang = "en" | "zh" | "ms" | "id" | "tl" | "my" | "ta";
 const LANGS: { code: Lang; label: string }[] = [
   { code: "en", label: "English" },
   { code: "zh", label: "中文" },
@@ -73,6 +73,7 @@ const LANGS: { code: Lang; label: string }[] = [
   { code: "id", label: "Bahasa Indonesia" },
   { code: "tl", label: "Tagalog" },
   { code: "my", label: "မြန်မာ" },
+  { code: "ta", label: "தமிழ்" },
 ];
 const NON_EN = LANGS.filter((l) => l.code !== "en").map((l) => l.code);
 

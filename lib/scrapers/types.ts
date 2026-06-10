@@ -9,7 +9,7 @@
  * Field conventions:
  *   - Verified channels (MOH, NEA, WHO, CDC, HealthHub) populate `agency`
  *     with the display name.
- *   - Online channels (Reddit, HardwareZone, Mothership, Telegram, TikTok,
+ *   - Online channels (Reddit, HardwareZone, Mothership, Telegram,
  *     Facebook, DuckDuckGo) populate `where` with the display name.
  *   - `stat`, `shares`, and `timeAgo` are optional surface metadata used by
  *     the UI when available.

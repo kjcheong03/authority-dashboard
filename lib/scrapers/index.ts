@@ -28,7 +28,6 @@ export const CHANNELS: ChannelMeta[] = [
   { id: "hwz",        displayName: "HardwareZone", lane: "online" },
   { id: "mothership", displayName: "Mothership",   lane: "online" },
   { id: "telegram",   displayName: "Telegram",     lane: "online" },
-  { id: "tiktok",     displayName: "TikTok",       lane: "online" },
   { id: "facebook",   displayName: "Facebook",     lane: "online" },
   { id: "ddg",        displayName: "DuckDuckGo",   lane: "online" },
 ];

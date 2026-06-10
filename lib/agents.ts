@@ -293,7 +293,7 @@ export async function traceOrigins(
 For EACH claim below, use web search to trace how it spread, then return a concise propagation timeline.
 
 Writing rules — be minimal and easy to read:
-- Use short, common outlet names: "X" (never "X (formerly Twitter)"), "WHO", "NYT", "Reddit", "TikTok". No parentheticals, no full legal names.
+- Use short, common outlet names: "X" (never "X (formerly Twitter)"), "WHO", "NYT", "Reddit", "Facebook". No parentheticals, no full legal names.
 - event: one short clause — what that outlet did. Do NOT restate the claim.
 - url: a direct link to that specific source/article (required for each step — this is how officers verify it).
 
@@ -558,6 +558,7 @@ const TRANSLATE_LABELS: Record<string, string> = {
   id: "Bahasa Indonesia",
   tl: "Tagalog (Filipino)",
   my: "Burmese (Myanmar, မြန်မာ)",
+  ta: "Tamil (தமிழ்)",
 };
 
 export async function translateAdvisory(
