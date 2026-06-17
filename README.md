@@ -41,15 +41,15 @@ happens.
 
 ### Live scan
 
-<img src="docs/screenshots/authority-live-scan.png" alt="ORCA Authority live scan screen" width="820" />
-
 Review official source coverage, misinformation signals, risk indicators, and the editable broadcast draft in one workspace.
+
+<img src="docs/screenshots/authority-live-scan.png" alt="ORCA Authority live scan screen" width="820" />
 
 ### Audit trail
 
-<img src="docs/screenshots/authority-audit-trail.png" alt="ORCA Authority audit trail screen" width="820" />
-
 Track completed research runs, triage verdicts, and broadcast approvals for review.
+
+<img src="docs/screenshots/authority-audit-trail.png" alt="ORCA Authority audit trail screen" width="820" />
 
 ## How it all connects
 
