@@ -74,6 +74,11 @@ From the officer's seat:
    each caregiver.
 5. Caregivers act on it — and any help they request flows on to the **Community Partner Dashboard**.
 
+## Related repositories
+
+- [ORCA Caregiver Web App](https://github.com/kjcheong03/orca)
+- [ORCA Community Partner Dashboard](https://github.com/kjcheong03/cara-community-dashboard)
+
 ## Tech stack
 
 - **Next.js 16** (App Router) · **React 19** · **TypeScript**
