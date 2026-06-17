@@ -77,7 +77,7 @@ From the officer's seat:
 ## Related repositories
 
 - [ORCA Caregiver Web App](https://github.com/kjcheong03/orca)
-- [ORCA Community Partner Dashboard](https://github.com/kjcheong03/cara-community-dashboard)
+- [ORCA Community Partner Dashboard](https://github.com/kjcheong03/community-partner-dashboard)
 
 ## Tech stack
 
