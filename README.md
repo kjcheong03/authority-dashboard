@@ -37,6 +37,20 @@ happens.
 - **Audit trail** — every research run and published advisory is recorded.
 - **Replay mode** — a deterministic recorded run for a flawless demo: no keys, no network.
 
+## Features
+
+### Live scan
+
+<img src="docs/screenshots/authority-live-scan.png" alt="ORCA Authority live scan screen" width="820" />
+
+Review official source coverage, misinformation signals, risk indicators, and the editable broadcast draft in one workspace.
+
+### Audit trail
+
+<img src="docs/screenshots/authority-audit-trail.png" alt="ORCA Authority audit trail screen" width="820" />
+
+Track completed research runs, triage verdicts, and broadcast approvals for review.
+
 ## How it all connects
 
 ORCA has three surfaces that stay in sync in **real time**:
